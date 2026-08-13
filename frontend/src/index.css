@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-pitch-ink: #0F2419;
+  --color-pitch-green: #1B4332;
+  --color-line: #F5F1E8;
+  --color-win: #2ECC71;
+  --color-win-soft: #5EDB8C;
+  --color-loss: #E74C3C;
+  --color-loss-soft: #F08376;
+  --color-gold: #D4A017;
+  --color-gold-soft: #E8C158;
+  --color-fun: #EC407A;
+  --color-fun-soft: #F48FB1;
+  --font-display: 'Oswald', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 50% -10%, #16341F 0%, #0F2419 55%, #0A1712 100%);
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-pitch-ink);
+}
