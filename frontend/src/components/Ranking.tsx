@@ -37,9 +37,9 @@ export function Ranking({ stats }: { stats: RankingEntry[] }) {
       <div className="flex justify-center gap-2.5 mb-6 items-end">
         {podiumOrder.map((p, i) =>
           p ? (
-            <div key={p.playerId} className={`text-center ${i === 1 ? "order-first" : ""}`}>
+            <div key={p.playerId} className={`flex flex-col items-center w-24 ${i === 1 ? "order-first" : ""}`}>
               <Avatar name={p.playerName} photoUrl={p.photoUrl} size={i === 1 ? 56 : 44} ring={i === 1 ? "#D4A017" : "#5EDB8C"} />
-              <div className="text-xs font-bold mt-1.5">{p.playerName}</div>
+              <div className="text-xs font-bold mt-1.5 text-center break-words leading-tight">{p.playerName}</div>
               <div className="text-[11px] text-line/50 font-mono">{Math.round(p.winRate * 100)}%</div>
             </div>
           ) : <div key={i} />

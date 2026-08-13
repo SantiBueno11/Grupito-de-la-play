@@ -42,18 +42,28 @@ export function HeadToHead({ players }: { players: Player[] }) {
         <select
           value={playerAId}
           onChange={(e) => setPlayerAId(e.target.value)}
-          className="bg-line/6 border border-line/15 rounded-lg px-3 py-2.5 text-line text-sm outline-none"
+          style={{ colorScheme: "dark", borderColor: "#D4A017", color: "#5EDB8C" }}
+          className="bg-line/6 border rounded-lg px-3 py-2.5 text-sm outline-none font-semibold"
         >
-          <option value="">Jugador 1</option>
-          {players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="" style={{ backgroundColor: "#D4A017", color: "#0F2419" }}>Jugador 1</option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id} style={{ backgroundColor: "#D4A017", color: "#0F2419" }}>
+              {p.name}
+            </option>
+          ))}
         </select>
         <select
           value={playerBId}
           onChange={(e) => setPlayerBId(e.target.value)}
-          className="bg-line/6 border border-line/15 rounded-lg px-3 py-2.5 text-line text-sm outline-none"
+          style={{ colorScheme: "dark", borderColor: "#D4A017", color: "#5EDB8C" }}
+          className="bg-line/6 border rounded-lg px-3 py-2.5 text-sm outline-none font-semibold"
         >
-          <option value="">Jugador 2</option>
-          {players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="" style={{ backgroundColor: "#D4A017", color: "#0F2419" }}>Jugador 2</option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id} style={{ backgroundColor: "#D4A017", color: "#0F2419" }}>
+              {p.name}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -66,15 +76,15 @@ export function HeadToHead({ players }: { players: Player[] }) {
 
       {data && (
         <div className="flex flex-col gap-5">
-          <div className="flex items-center justify-center gap-6">
-            <div className="text-center">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+            <div className="flex flex-col items-center">
               <Avatar name={data.playerAName} photoUrl={data.playerAPhotoUrl} size={56} />
-              <div className="text-sm font-bold mt-2">{data.playerAName}</div>
+              <div className="text-sm font-bold mt-2 text-center break-words leading-tight">{data.playerAName}</div>
             </div>
-            <Swords size={20} className="text-line/40" />
-            <div className="text-center">
+            <Swords size={20} className="text-line/40 mt-4" />
+            <div className="flex flex-col items-center">
               <Avatar name={data.playerBName} photoUrl={data.playerBPhotoUrl} size={56} />
-              <div className="text-sm font-bold mt-2">{data.playerBName}</div>
+              <div className="text-sm font-bold mt-2 text-center break-words leading-tight">{data.playerBName}</div>
             </div>
           </div>
 
