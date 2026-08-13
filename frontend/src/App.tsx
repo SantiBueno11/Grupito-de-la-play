@@ -103,11 +103,11 @@ export default function App() {
             style={{ borderColor: "#D4A017" }}
           />
           <div>
-            <div className="font-mono text-[11px] tracking-[3px] text-win-soft mb-1">FÚTBOL 5 · SEMANAL</div>
+            <div className="font-mono text-[11px] tracking-[3px] text-win-soft mb-1">FÚTBOL 5 </div>
             <h1 className="font-display font-bold text-3xl m-0">Grupito de la Play</h1>
           </div>
         </div>
-        <p className="mt-3 text-line/60 text-sm">Registro de partidos, plantel y tabla de la semana</p>
+        <p className="mt-3 text-line/60 text-sm">Vamos a ver quein la tiene mas larga y a quien se le dejan el toto roto</p>
       </div>
 
       <div className="flex gap-1.5 px-5 pt-4 overflow-x-auto">
