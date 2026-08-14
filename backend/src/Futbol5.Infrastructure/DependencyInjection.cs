@@ -27,6 +27,11 @@ public static class DependencyInjection
                 var connectionString = configuration.GetConnectionString("Sqlite") ?? "Data Source=futbol5.db";
                 options.UseSqlite(connectionString);
             }
+
+            // La migración se generó en un momento con SQLite activo; al correr contra otro proveedor
+            // (Postgres) EF Core detecta diferencias de anotaciones específicas del proveedor y las marca
+            // como "cambios pendientes", aunque el esquema real es correcto. La ignoramos a propósito.
+            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<Futbol5DbContext>());
