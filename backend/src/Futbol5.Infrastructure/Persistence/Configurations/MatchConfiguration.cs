@@ -10,6 +10,8 @@ public class MatchConfiguration : IEntityTypeConfiguration<Match>
     {
         builder.ToTable("Matches");
         builder.HasKey(m => m.Id);
+        builder.Property(m => m.Id).HasConversion<string>();
+
         builder.Property(m => m.TeamAName).IsRequired().HasMaxLength(50);
         builder.Property(m => m.TeamBName).IsRequired().HasMaxLength(50);
 

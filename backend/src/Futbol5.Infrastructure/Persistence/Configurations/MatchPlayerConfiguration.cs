@@ -11,6 +11,9 @@ public class MatchPlayerConfiguration : IEntityTypeConfiguration<MatchPlayer>
         builder.ToTable("MatchPlayers");
         builder.HasKey(mp => new { mp.MatchId, mp.PlayerId });
 
+        builder.Property(mp => mp.MatchId).HasConversion<string>();
+        builder.Property(mp => mp.PlayerId).HasConversion<string>();
+
         builder.HasOne(mp => mp.Player)
             .WithMany(p => p.MatchPlayers)
             .HasForeignKey(mp => mp.PlayerId)
