@@ -24,6 +24,8 @@ export const api = {
       request<Player>("/api/players", { method: "POST", body: JSON.stringify({ name }) }),
     updatePhoto: (id: string, photoUrl: string | null) =>
       request<void>(`/api/players/${id}/photo`, { method: "PUT", body: JSON.stringify({ photoUrl }) }),
+    updateName: (id: string, name: string) =>
+      request<void>(`/api/players/${id}/name`, { method: "PUT", body: JSON.stringify({ name }) }),
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Camera, Plus, Trash2 } from "lucide-react";
+import { Camera, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
@@ -10,6 +10,7 @@ interface Props {
   onCreate: (name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onUpdatePhoto: (id: string, photoUrl: string | null) => Promise<void>;
+  onUpdateName: (id: string, name: string) => Promise<void>;
 }
 
 function PlayerPhotoButton({ player, onUpdatePhoto }: { player: Player; onUpdatePhoto: Props["onUpdatePhoto"] }) {
@@ -32,7 +33,7 @@ function PlayerPhotoButton({ player, onUpdatePhoto }: { player: Player; onUpdate
   };
 
   return (
-    <button onClick={pick} className="relative group" title="Cambiar foto" disabled={uploading}>
+    <button onClick={pick} className="relative group flex-shrink-0" title="Cambiar foto" disabled={uploading}>
       <Avatar name={player.name} photoUrl={player.photoUrl} />
       <span
         className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2"
@@ -50,7 +51,76 @@ function PlayerPhotoButton({ player, onUpdatePhoto }: { player: Player; onUpdate
   );
 }
 
-export function Plantel({ players, onCreate, onDelete, onUpdatePhoto }: Props) {
+function PlayerNameField({ player, onUpdateName }: { player: Player; onUpdateName: Props["onUpdateName"] }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(player.name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setValue(player.name);
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const save = async () => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === player.name) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onUpdateName(player.id, trimmed);
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cambiar el nombre");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") cancel();
+            }}
+            className="bg-line/6 border border-gold/50 rounded-lg px-2 py-1 text-sm font-semibold outline-none w-40"
+          />
+          <button onClick={save} disabled={saving} className="text-win-soft p-1" title="Guardar">
+            <Check size={16} />
+          </button>
+          <button onClick={cancel} disabled={saving} className="text-line/40 p-1" title="Cancelar">
+            <X size={16} />
+          </button>
+        </div>
+        {error && <p className="text-loss-soft text-xs">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={startEdit} className="flex items-center gap-1.5 group">
+      <span className="font-semibold">{player.name}</span>
+      <Pencil size={13} className="text-line/30 group-hover:text-line/60" />
+    </button>
+  );
+}
+
+export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateName }: Props) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +160,7 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto }: Props) {
         </button>
       </div>
       {error && <p className="text-loss-soft text-xs mb-3">{error}</p>}
-      <p className="text-line/40 text-xs mb-4">Tocá la foto de un jugador para cambiarla.</p>
+      <p className="text-line/40 text-xs mb-4">Tocá la foto para cambiarla, o el nombre para editarlo.</p>
 
       {players.length === 0 ? (
         <EmptyState text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos." />
@@ -100,7 +170,7 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto }: Props) {
             <div key={p.id} className="flex items-center justify-between px-3.5 py-2.5 border border-line/10 rounded-xl bg-line/3">
               <div className="flex items-center gap-3">
                 <PlayerPhotoButton player={p} onUpdatePhoto={onUpdatePhoto} />
-                <span className="font-semibold">{p.name}</span>
+                <PlayerNameField player={p} onUpdateName={onUpdateName} />
               </div>
               <button onClick={() => onDelete(p.id)} className="text-line/40 hover:text-loss-soft p-1" title="Eliminar">
                 <Trash2 size={15} />

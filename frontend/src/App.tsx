@@ -78,6 +78,11 @@ export default function App() {
     await loadAll();
   };
 
+  const updatePlayerName = async (id: string, name: string) => {
+    await api.players.updateName(id, name);
+    await loadAll();
+  };
+
   const createMatch = async (input: CreateMatchInput) => {
     await api.matches.create(input);
     await loadAll();
@@ -149,7 +154,7 @@ export default function App() {
         ) : tab === "caraacara" ? (
           <HeadToHead players={players} />
         ) : (
-          <Plantel players={players} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} />
+          <Plantel players={players} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} />
         )}
       </div>
 

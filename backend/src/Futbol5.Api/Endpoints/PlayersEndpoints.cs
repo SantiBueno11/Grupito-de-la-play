@@ -5,6 +5,7 @@ using MediatR;
 namespace Futbol5.Api.Endpoints;
 
 public record UpdatePhotoRequest(string? PhotoUrl);
+public record UpdateNameRequest(string Name);
 
 public static class PlayersEndpoints
 {
@@ -21,6 +22,19 @@ public static class PlayersEndpoints
             {
                 var player = await mediator.Send(command);
                 return Results.Created($"/api/players/{player.Id}", player);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(new { error = ex.Message });
+            }
+        });
+
+        group.MapPut("/{id:guid}/name", async (Guid id, UpdateNameRequest body, IMediator mediator) =>
+        {
+            try
+            {
+                var updated = await mediator.Send(new UpdatePlayerNameCommand(id, body.Name));
+                return updated ? Results.NoContent() : Results.NotFound();
             }
             catch (InvalidOperationException ex)
             {
