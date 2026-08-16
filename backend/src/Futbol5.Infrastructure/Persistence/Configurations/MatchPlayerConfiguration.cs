@@ -14,6 +14,8 @@ public class MatchPlayerConfiguration : IEntityTypeConfiguration<MatchPlayer>
         builder.Property(mp => mp.MatchId).HasConversion<string>();
         builder.Property(mp => mp.PlayerId).HasConversion<string>();
 
+        builder.Property(mp => mp.HasSpecialTag).HasConversion<int>();
+
         builder.HasOne(mp => mp.Player)
             .WithMany(p => p.MatchPlayers)
             .HasForeignKey(mp => mp.PlayerId)

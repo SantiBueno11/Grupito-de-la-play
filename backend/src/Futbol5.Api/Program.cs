@@ -18,14 +18,12 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB, para fotos en base64
 });
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
-
+// --- CONFIGURACIÓN DE CORS (Actualizada para producción) ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.AllowAnyOrigin()   // <-- Esto soluciona el bloqueo en Render
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -37,7 +35,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<Futbol5DbContext>();
-    db.Database.Migrate();
+    // IMPORTANTE: Esto requiere que la base de datos de producción esté configurada correctamente en Render
+    db.Database.Migrate(); 
 }
 
 // --- Middleware ---
