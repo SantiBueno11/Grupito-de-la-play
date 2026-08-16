@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Camera, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { Camera, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
@@ -121,31 +121,31 @@ function PlayerNameField({ player, onUpdateName }: { player: Player; onUpdateNam
   );
 }
 
-function StarRating({ player, onUpdateRating }: { player: Player; onUpdateRating: Props["onUpdateRating"] }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const current = hover ?? player.rating ?? 0;
-
-  const click = (star: number) => {
-    onUpdateRating(player.id, player.rating === star ? null : star);
+function NumberRating({ player, onUpdateRating }: { player: Player; onUpdateRating: Props["onUpdateRating"] }) {
+  const click = (n: number) => {
+    onUpdateRating(player.id, player.rating === n ? null : n);
   };
 
   return (
-    <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(null)}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          onClick={() => click(star)}
-          onMouseEnter={() => setHover(star)}
-          className="p-0.5"
-          title={`${star} estrella${star === 1 ? "" : "s"}`}
-        >
-          <Star
-            size={14}
-            fill={star <= current ? "#D4A017" : "none"}
-            color={star <= current ? "#D4A017" : "rgba(245,241,232,0.25)"}
-          />
-        </button>
-      ))}
+    <div className="flex items-center gap-1">
+      <span className="text-[10px] text-line/40 uppercase tracking-wide mr-0.5">Nivel</span>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const active = player.rating === n;
+        return (
+          <button
+            key={n}
+            onClick={() => click(n)}
+            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border transition-colors"
+            style={{
+              borderColor: active ? "#D4A017" : "rgba(245,241,232,0.15)",
+              background: active ? "#D4A017" : "transparent",
+              color: active ? "#0F2419" : "rgba(245,241,232,0.5)",
+            }}
+          >
+            {n}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -202,7 +202,7 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateNa
                 <PlayerPhotoButton player={p} onUpdatePhoto={onUpdatePhoto} />
                 <div className="flex flex-col gap-1">
                   <PlayerNameField player={p} onUpdateName={onUpdateName} />
-                  <StarRating player={p} onUpdateRating={onUpdateRating} />
+                  <NumberRating player={p} onUpdateRating={onUpdateRating} />
                 </div>
               </div>
               <button onClick={() => onDelete(p.id)} className="text-line/40 hover:text-loss-soft p-1" title="Eliminar">
