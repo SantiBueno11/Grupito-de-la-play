@@ -25,6 +25,6 @@ public class CreatePlayerCommandHandler(IApplicationDbContext context)
         context.Players.Add(player);
         await context.SaveChangesAsync(cancellationToken);
 
-        return new PlayerDto(player.Id, player.Name, player.PhotoUrl);
+        return new PlayerDto(player.Id, player.Name, player.PhotoUrl, player.Rating);
     }
 }

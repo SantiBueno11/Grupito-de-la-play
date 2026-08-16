@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { CalendarDays, ClipboardCheck, Swords, Trophy, Users } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Shuffle, Swords, Trophy, Users } from "lucide-react";
 import { api } from "./lib/api";
 import type { AttendanceEntry, CreateMatchInput, Match, Player, RankingEntry } from "./lib/types";
 import { Plantel } from "./components/Plantel";
@@ -8,9 +8,10 @@ import { Historial } from "./components/Historial";
 import { Ranking } from "./components/Ranking";
 import { Attendance } from "./components/Attendance";
 import { HeadToHead } from "./components/HeadToHead";
+import { Randomizador } from "./components/Randomizador";
 import grupitoPhoto from "./assets/grupito.png";
 
-type Tab = "cargar" | "historial" | "ranking" | "asistencia" | "caraacara" | "plantel";
+type Tab = "cargar" | "historial" | "ranking" | "asistencia" | "caraacara" | "randomizador" | "plantel";
 
 const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
   { id: "cargar", label: "Cargar partido", icon: Swords },
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
   { id: "ranking", label: "Ranking", icon: Trophy },
   { id: "asistencia", label: "Asistencia", icon: ClipboardCheck },
   { id: "caraacara", label: "Cara a cara", icon: Swords },
+  { id: "randomizador", label: "Randomizador", icon: Shuffle },
   { id: "plantel", label: "Plantel", icon: Users },
 ];
 
@@ -80,6 +82,11 @@ export default function App() {
 
   const updatePlayerName = async (id: string, name: string) => {
     await api.players.updateName(id, name);
+    await loadAll();
+  };
+
+  const updatePlayerRating = async (id: string, rating: number | null) => {
+    await api.players.updateRating(id, rating);
     await loadAll();
   };
 
@@ -153,8 +160,10 @@ export default function App() {
           <Attendance data={attendance} />
         ) : tab === "caraacara" ? (
           <HeadToHead players={players} />
+        ) : tab === "randomizador" ? (
+          <Randomizador players={players} />
         ) : (
-          <Plantel players={players} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} />
+          <Plantel players={players} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} onUpdateRating={updatePlayerRating} />
         )}
       </div>
 

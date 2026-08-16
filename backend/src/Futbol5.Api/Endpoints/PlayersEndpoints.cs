@@ -6,6 +6,7 @@ namespace Futbol5.Api.Endpoints;
 
 public record UpdatePhotoRequest(string? PhotoUrl);
 public record UpdateNameRequest(string Name);
+public record UpdateRatingRequest(int? Rating);
 
 public static class PlayersEndpoints
 {
@@ -46,6 +47,19 @@ public static class PlayersEndpoints
         {
             var updated = await mediator.Send(new UpdatePlayerPhotoCommand(id, body.PhotoUrl));
             return updated ? Results.NoContent() : Results.NotFound();
+        });
+
+        group.MapPut("/{id:guid}/rating", async (Guid id, UpdateRatingRequest body, IMediator mediator) =>
+        {
+            try
+            {
+                var updated = await mediator.Send(new UpdatePlayerRatingCommand(id, body.Rating));
+                return updated ? Results.NoContent() : Results.NotFound();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, IMediator mediator) =>

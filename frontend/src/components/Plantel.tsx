@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Camera, Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Camera, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
@@ -11,6 +11,7 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onUpdatePhoto: (id: string, photoUrl: string | null) => Promise<void>;
   onUpdateName: (id: string, name: string) => Promise<void>;
+  onUpdateRating: (id: string, rating: number | null) => Promise<void>;
 }
 
 function PlayerPhotoButton({ player, onUpdatePhoto }: { player: Player; onUpdatePhoto: Props["onUpdatePhoto"] }) {
@@ -120,7 +121,36 @@ function PlayerNameField({ player, onUpdateName }: { player: Player; onUpdateNam
   );
 }
 
-export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateName }: Props) {
+function StarRating({ player, onUpdateRating }: { player: Player; onUpdateRating: Props["onUpdateRating"] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const current = hover ?? player.rating ?? 0;
+
+  const click = (star: number) => {
+    onUpdateRating(player.id, player.rating === star ? null : star);
+  };
+
+  return (
+    <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(null)}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          onClick={() => click(star)}
+          onMouseEnter={() => setHover(star)}
+          className="p-0.5"
+          title={`${star} estrella${star === 1 ? "" : "s"}`}
+        >
+          <Star
+            size={14}
+            fill={star <= current ? "#D4A017" : "none"}
+            color={star <= current ? "#D4A017" : "rgba(245,241,232,0.25)"}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateName, onUpdateRating }: Props) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +190,7 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateNa
         </button>
       </div>
       {error && <p className="text-loss-soft text-xs mb-3">{error}</p>}
-      <p className="text-line/40 text-xs mb-4">Tocá la foto para cambiarla, o el nombre para editarlo.</p>
+      <p className="text-line/40 text-xs mb-4">Tocá la foto para cambiarla, el nombre para editarlo, o las estrellas para poner su nivel.</p>
 
       {players.length === 0 ? (
         <EmptyState text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos." />
@@ -170,7 +200,10 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateNa
             <div key={p.id} className="flex items-center justify-between px-3.5 py-2.5 border border-line/10 rounded-xl bg-line/3">
               <div className="flex items-center gap-3">
                 <PlayerPhotoButton player={p} onUpdatePhoto={onUpdatePhoto} />
-                <PlayerNameField player={p} onUpdateName={onUpdateName} />
+                <div className="flex flex-col gap-1">
+                  <PlayerNameField player={p} onUpdateName={onUpdateName} />
+                  <StarRating player={p} onUpdateRating={onUpdateRating} />
+                </div>
               </div>
               <button onClick={() => onDelete(p.id)} className="text-line/40 hover:text-loss-soft p-1" title="Eliminar">
                 <Trash2 size={15} />

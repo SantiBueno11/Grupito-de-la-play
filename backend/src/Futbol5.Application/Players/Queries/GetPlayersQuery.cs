@@ -14,7 +14,7 @@ public class GetPlayersQueryHandler(IApplicationDbContext context)
     {
         return await context.Players
             .OrderBy(p => p.Name)
-            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl))
+            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating))
             .ToListAsync(cancellationToken);
     }
 }

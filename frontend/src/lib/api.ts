@@ -26,6 +26,8 @@ export const api = {
       request<void>(`/api/players/${id}/photo`, { method: "PUT", body: JSON.stringify({ photoUrl }) }),
     updateName: (id: string, name: string) =>
       request<void>(`/api/players/${id}/name`, { method: "PUT", body: JSON.stringify({ name }) }),
+    updateRating: (id: string, rating: number | null) =>
+      request<void>(`/api/players/${id}/rating`, { method: "PUT", body: JSON.stringify({ rating }) }),
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {

@@ -5,6 +5,7 @@ public class Player
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? PhotoUrl { get; private set; }
+    public int? Rating { get; private set; } // 1 a 5, null = sin calificar
 
     private readonly List<MatchPlayer> _matchPlayers = new();
     public IReadOnlyCollection<MatchPlayer> MatchPlayers => _matchPlayers.AsReadOnly();
@@ -32,5 +33,13 @@ public class Player
     public void SetPhoto(string? photoUrl)
     {
         PhotoUrl = photoUrl;
+    }
+
+    public void SetRating(int? rating)
+    {
+        if (rating is < 1 or > 5)
+            throw new ArgumentException("El nivel tiene que ser entre 1 y 5.", nameof(rating));
+
+        Rating = rating;
     }
 }
