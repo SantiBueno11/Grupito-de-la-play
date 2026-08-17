@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { CalendarDays, ClipboardCheck, Shuffle, Swords, Trophy, Users } from "lucide-react";
 import { api } from "./lib/api";
-import type { AttendanceEntry, CreateMatchInput, Match, Player, RankingEntry } from "./lib/types";
+import type {
+  AttendanceEntry,CreateMatchInput,Match,MmrEntry,Player,RankingEntry,} from "./lib/types";
 import { Plantel } from "./components/Plantel";
 import { CargarPartido } from "./components/CargarPartido";
 import { Historial } from "./components/Historial";
@@ -28,6 +29,7 @@ export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
+  const [mmr, setMmr] = useState<MmrEntry[]>([]);
   const [attendance, setAttendance] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,16 +43,19 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
-      const [p, m, r, a] = await Promise.all([
-        api.players.list(),
-        api.matches.list(),
-        api.matches.ranking(),
-        api.matches.attendance(),
-      ]);
-      setPlayers(p);
-      setMatches(m);
-      setRanking(r);
-      setAttendance(a);
+     const [p, m, r, mmrData, a] = await Promise.all([
+  api.players.list(),
+  api.matches.list(),
+  api.matches.ranking(),
+  api.matches.mmr(),
+  api.matches.attendance(),
+]);
+      
+setPlayers(p);
+setMatches(m);
+setRanking(r);
+setMmr(mmrData);
+setAttendance(a);
     } catch (e) {
       setLoadError(
         e instanceof Error
@@ -155,7 +160,7 @@ export default function App() {
         ) : tab === "historial" ? (
           <Historial matches={matches} onDelete={deleteMatch} />
         ) : tab === "ranking" ? (
-          <Ranking stats={ranking} />
+          <Ranking stats={ranking} mmr={mmr} />
         ) : tab === "asistencia" ? (
           <Attendance data={attendance} />
         ) : tab === "caraacara" ? (
