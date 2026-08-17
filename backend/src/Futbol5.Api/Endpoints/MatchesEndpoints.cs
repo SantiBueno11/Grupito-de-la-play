@@ -19,6 +19,9 @@ public static class MatchesEndpoints
         group.MapGet("/attendance", async (IMediator mediator) =>
             Results.Ok(await mediator.Send(new GetAttendanceQuery())));
 
+        group.MapGet("/mmr", async (IMediator mediator) =>
+            Results.Ok(await mediator.Send(new GetMmrQuery())));
+
         group.MapGet("/head-to-head/{playerAId:guid}/{playerBId:guid}", async (Guid playerAId, Guid playerBId, IMediator mediator) =>
         {
             try
