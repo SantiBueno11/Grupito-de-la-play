@@ -1,4 +1,12 @@
-import type { AttendanceEntry, CreateMatchInput, HeadToHead, Match, Player, RankingEntry } from "./types";
+import type {
+  AttendanceEntry,
+  CreateMatchInput,
+  HeadToHead,
+  Match,
+  MmrEntry,
+  Player,
+  RankingEntry,
+} from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
@@ -31,6 +39,7 @@ export const api = {
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {
+    mmr: () => request<MmrEntry[]>("/api/matches/mmr"),
     list: () => request<Match[]>("/api/matches"),
     ranking: () => request<RankingEntry[]>("/api/matches/ranking"),
     attendance: () => request<AttendanceEntry[]>("/api/matches/attendance"),

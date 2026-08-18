@@ -35,6 +35,18 @@ export interface RankingEntry {
   currentStreak: number;
 }
 
+export interface MmrEntry {
+  playerId: string;
+  playerName: string;
+  photoUrl?: string | null;
+  rank: string;
+  mmr: number;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
 export interface AttendanceEntry {
   playerId: string;
   playerName: string;

@@ -47,13 +47,13 @@ export default function App() {
         api.matches.list(),
         api.matches.ranking(),
         api.matches.attendance(),
-        api.matches.ranking()
+        api.matches.mmr(),
       ]);
       setPlayers(p);
       setMatches(m);
       setRanking(r);
       setAttendance(a);
-      setMmr(mmr);
+      setMmr(mm);
     } catch (e) {
       setLoadError(
         e instanceof Error
@@ -85,6 +85,11 @@ export default function App() {
 
   const updatePlayerName = async (id: string, name: string) => {
     await api.players.updateName(id, name);
+    await loadAll();
+  };
+
+  const updatePlayerRating = async (id: string, rating: number | null) => {
+    await api.players.updateRating(id, rating);
     await loadAll();
   };
 
@@ -159,9 +164,9 @@ export default function App() {
         ) : tab === "caraacara" ? (
           <HeadToHead players={players} />
         ) : tab === "randomizador" ? (
-          <Randomizador players={players} mmr={mmr} />
+          <Randomizador players={players} />
         ) : (
-          <Plantel players={players} mmr={mmr} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} />
+          <Plantel players={players} mmr={mmr} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} onUpdateRating={updatePlayerRating} />
         )}
       </div>
 

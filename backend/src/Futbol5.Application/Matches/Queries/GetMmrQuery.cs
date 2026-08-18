@@ -74,9 +74,12 @@ public class GetMmrQueryHandler(IApplicationDbContext context)
     private static string TierFor(double rating) => rating switch
     {
         < 900 => "Bronce",
-        < 1100 => "Plata",
-        < 1300 => "Oro",
-        < 1500 => "Platino",
-        _ => "Diamante",
+        < 1050 => "Plata",
+        < 1200 => "Oro",
+        < 1350 => "Platino",
+        < 1500 => "Diamante",
+        < 1650 => "Campeón",
+        < 1800 => "Gran Campeón",
+        _ => "Leyenda",
     };
 }
