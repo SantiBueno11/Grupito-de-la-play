@@ -153,12 +153,12 @@ export default function App() {
           <div className="border border-loss/40 bg-loss/10 rounded-xl p-5 text-sm text-loss-soft">
             {loadError}
           </div>
-        ) : tab === "cargar" ? (
+                ) : tab === "cargar" ? (
           <CargarPartido players={players} onSave={createMatch} />
         ) : tab === "historial" ? (
           <Historial matches={matches} onDelete={deleteMatch} />
         ) : tab === "ranking" ? (
-          <Ranking stats={ranking} />
+          <Ranking stats={ranking} mmr={mmr} />
         ) : tab === "asistencia" ? (
           <Attendance data={attendance} />
         ) : tab === "caraacara" ? (
@@ -166,7 +166,14 @@ export default function App() {
         ) : tab === "randomizador" ? (
           <Randomizador players={players} />
         ) : (
-          <Plantel players={players} mmr={mmr} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} onUpdateRating={updatePlayerRating} />
+          <Plantel
+            players={players}
+            onCreate={createPlayer}
+            onDelete={deletePlayer}
+            onUpdatePhoto={updatePlayerPhoto}
+            onUpdateName={updatePlayerName}
+            onUpdateRating={updatePlayerRating}
+          />
         )}
       </div>
 

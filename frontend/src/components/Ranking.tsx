@@ -1,68 +1,236 @@
-import { Flame, Snowflake } from "lucide-react";
+import {
+  ChevronDown,
+  Flame,
+  Snowflake,
+  Minus,
+} from "lucide-react";
+import { useState } from "react";
 import { Avatar } from "./Avatar";
-import { Chip } from "./Chip";
+import { RankLogo } from "./RankLogo";
 import { SectionTitle, EmptyState } from "./Shared";
-import type { RankingEntry } from "../lib/types";
+import type {
+  MmrEntry,
+  RankingEntry,
+} from "../lib/types";
 
-function StreakChip({ streak }: { streak: number }) {
-  if (streak === 0) return null;
-  const isWin = streak > 0;
-  return (
-    <Chip tone={isWin ? "win" : "loss"}>
-      <span className="inline-flex items-center gap-1">
-        {isWin ? <Flame size={11} /> : <Snowflake size={11} />}
-        {Math.abs(streak)}
+function streakLabel(streak: number) {
+  if (streak > 0) {
+    return `${streak} ${
+      streak === 1 ? "victoria" : "victorias"
+    } seguidas`;
+  }
+
+  if (streak < 0) {
+    const losses = Math.abs(streak);
+
+    return `${losses} ${
+      losses === 1 ? "derrota" : "derrotas"
+    } seguidas`;
+  }
+
+  return "Sin racha activa";
+}
+
+function StreakValue({ streak }: { streak: number }) {
+  if (streak > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-win-soft">
+        <Flame size={14} />
+        {streakLabel(streak)}
       </span>
-    </Chip>
+    );
+  }
+
+  if (streak < 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-loss-soft">
+        <Snowflake size={14} />
+        {streakLabel(streak)}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-line/45">
+      <Minus size={14} />
+      {streakLabel(streak)}
+    </span>
   );
 }
 
-export function Ranking({ stats }: { stats: RankingEntry[] }) {
-  if (stats.length === 0) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone: "win" | "loss" | "line";
+}) {
+  const toneClasses = {
+    win: "border-win/25 bg-win/8 text-win-soft",
+    loss: "border-loss/25 bg-loss/8 text-loss-soft",
+    line: "border-line/10 bg-line/4 text-line/70",
+  };
+
+  return (
+    <div
+      className={`min-w-0 rounded-lg border px-2.5 py-2 ${toneClasses[tone]}`}
+    >
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+        {label}
+      </div>
+
+      <div className="truncate text-xs font-bold">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export function Ranking({
+  stats,
+  mmr,
+}: {
+  stats: RankingEntry[];
+  mmr: MmrEntry[];
+}) {
+  const [expandedPlayerId, setExpandedPlayerId] =
+    useState<string | null>(null);
+
+  const statsByPlayerId = new Map(
+    stats.map((player) => [
+      player.playerId,
+      player,
+    ]),
+  );
+
+  if (mmr.length === 0) {
     return (
       <section>
-        <SectionTitle eyebrow="Tabla" title="Ranking de la semana" />
-        <EmptyState text="Todavía no hay partidos cargados para armar el ranking." />
+        <SectionTitle
+          eyebrow="Clasificatoria"
+          title="Tabla de rangos"
+        />
+
+        <EmptyState text="Todavía no hay jugadores para armar la clasificatoria." />
       </section>
     );
   }
 
-  const podium = stats.slice(0, 3);
-  const podiumOrder = [podium[1], podium[0], podium[2]];
-
   return (
     <section>
-      <SectionTitle eyebrow="Tabla" title="Ranking general" />
+      <SectionTitle
+        eyebrow="Clasificatoria"
+        title="Tabla de rangos"
+      />
 
-      <div className="flex justify-center gap-2.5 mb-6 items-end">
-        {podiumOrder.map((p, i) =>
-          p ? (
-            <div key={p.playerId} className={`flex flex-col items-center w-24 ${i === 1 ? "order-first" : ""}`}>
-              <Avatar name={p.playerName} photoUrl={p.photoUrl} size={i === 1 ? 56 : 44} ring={i === 1 ? "#D4A017" : "#5EDB8C"} />
-              <div className="text-xs font-bold mt-1.5 text-center break-words leading-tight">{p.playerName}</div>
-              <div className="text-[11px] text-line/50 font-mono">{Math.round(p.winRate * 100)}%</div>
-            </div>
-          ) : <div key={i} />
-        )}
-      </div>
+      <p className="mb-3 text-xs text-line/40">
+        Tocá un jugador para ver sus resultados y su racha actual.
+        El MMR se calcula con los resultados y la diferencia de goles.
+      </p>
 
-      <div className="flex flex-col gap-2">
-        {stats.map((s, i) => (
-          <div key={s.playerId} className="flex items-center justify-between px-3.5 py-2.5 border border-line/10 rounded-xl bg-line/3">
-            <div className="flex items-center gap-3">
-              <span className="w-5 text-center font-mono text-line/40 text-[13px]">{i + 1}</span>
-              <Avatar name={s.playerName} photoUrl={s.photoUrl} size={34} />
-              <span className="font-semibold text-sm">{s.playerName}</span>
-              {s.specialTagCount > 0 && <Chip tone="fun">gay x{s.specialTagCount}</Chip>}
+      <div className="overflow-hidden rounded-2xl border border-line/10 bg-line/3">
+        {mmr.map((player, index) => {
+          const playerStats = statsByPlayerId.get(
+            player.playerId,
+          );
+
+          const currentStreak =
+            playerStats?.currentStreak ?? 0;
+
+          const isExpanded =
+            expandedPlayerId === player.playerId;
+
+          return (
+            <div
+              key={player.playerId}
+              className="border-b border-line/10 last:border-b-0"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedPlayerId(
+                    isExpanded ? null : player.playerId,
+                  )
+                }
+                aria-expanded={isExpanded}
+                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-line/5"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="w-5 shrink-0 text-center font-mono text-[13px] text-line/40">
+                    {index + 1}
+                  </span>
+
+                  <Avatar
+                    name={player.playerName}
+                    photoUrl={player.photoUrl}
+                    size={36}
+                  />
+
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">
+                      {player.playerName}
+                    </div>
+
+                    <div className="text-[11px] text-line/45">
+                      {player.gamesPlayed}{" "}
+                      {player.gamesPlayed === 1
+                        ? "partido"
+                        : "partidos"}{" "}
+                      jugados
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <RankLogo rank={player.rank} />
+
+                  <div className="text-right">
+                    <div className="font-mono text-sm font-bold text-line/85">
+                      {Math.round(player.mmr)} pts
+                    </div>
+
+                    <div className="text-[10px] text-line/45">
+                      {player.rank}
+                    </div>
+                  </div>
+
+                  <ChevronDown
+                    size={16}
+                    className={`text-line/45 transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="grid grid-cols-3 gap-2 border-t border-line/10 px-3.5 py-3">
+                  <StatCard
+                    label="Ganados"
+                    value={`${player.wins}G`}
+                    tone="win"
+                  />
+
+                  <StatCard
+                    label="Perdidos"
+                    value={`${player.losses}P`}
+                    tone="loss"
+                  />
+
+                  <StatCard
+                    label="Racha"
+                    value={
+                      <StreakValue streak={currentStreak} />
+                    }
+                    tone="line"
+                  />
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <StreakChip streak={s.currentStreak} />
-              <Chip tone="win">{s.wins}G</Chip>
-              <Chip tone="loss">{s.losses}P</Chip>
-              <Chip tone="gold">{Math.round(s.winRate * 100)}%</Chip>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
