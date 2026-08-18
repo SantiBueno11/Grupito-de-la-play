@@ -1,21 +1,20 @@
 import { useState } from "react";
-import { Shuffle, Star } from "lucide-react";
+import { Shuffle } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { Chip } from "./Chip";
 import { SectionTitle, EmptyState } from "./Shared";
-import type { Player } from "../lib/types";
+import type { MmrEntry, Player } from "../lib/types";
 
-function effectiveRating(p: Player) {
-  return p.rating ?? 3;
-}
-
-function balanceTeams(players: Player[]): [Player[], Player[]] {
+// Reparte jugadores en 2 equipos lo más parejos posible según su MMR.
+// Baraja primero (para variar el resultado cada vez) y después reparte de
+// forma golosa: cada jugador va al equipo que hasta ahora tiene menos puntaje.
+function balanceTeams(players: Player[], ratingOf: (id: string) => number): [Player[], Player[]] {
   const shuffled = [...players];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  shuffled.sort((a, b) => effectiveRating(b) - effectiveRating(a));
+  shuffled.sort((a, b) => ratingOf(b.id) - ratingOf(a.id));
 
   const teamA: Player[] = [];
   const teamB: Player[] = [];
@@ -23,7 +22,7 @@ function balanceTeams(players: Player[]): [Player[], Player[]] {
   let sumB = 0;
 
   for (const p of shuffled) {
-    const r = effectiveRating(p);
+    const r = ratingOf(p.id);
     const goesToA = sumA < sumB || (sumA === sumB && teamA.length <= teamB.length);
     if (goesToA) { teamA.push(p); sumA += r; }
     else { teamB.push(p); sumB += r; }
@@ -32,14 +31,12 @@ function balanceTeams(players: Player[]): [Player[], Player[]] {
   return [teamA, teamB];
 }
 
-function avgRating(team: Player[]) {
-  if (team.length === 0) return 0;
-  return team.reduce((sum, p) => sum + effectiveRating(p), 0) / team.length;
-}
-
-export function Randomizador({ players }: { players: Player[] }) {
+export function Randomizador({ players, mmr }: { players: Player[]; mmr: MmrEntry[] }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(players.map((p) => p.id)));
   const [teams, setTeams] = useState<[Player[], Player[]] | null>(null);
+
+  const ratingOf = (id: string) => mmr.find((m) => m.playerId === id)?.rating ?? 1000;
+  const avg = (team: Player[]) => team.length === 0 ? 0 : Math.round(team.reduce((s, p) => s + ratingOf(p.id), 0) / team.length);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -51,7 +48,7 @@ export function Randomizador({ players }: { players: Player[] }) {
 
   const generate = () => {
     const chosen = players.filter((p) => selected.has(p.id));
-    setTeams(balanceTeams(chosen));
+    setTeams(balanceTeams(chosen, ratingOf));
   };
 
   if (players.length < 2) {
@@ -67,7 +64,7 @@ export function Randomizador({ players }: { players: Player[] }) {
     <section>
       <SectionTitle eyebrow="Randomizador" title="Armar equipos aleatorios" />
       <p className="text-line/40 text-xs mb-3">
-        Elegí quién juega hoy y armá dos equipos parejos según el nivel de cada uno.
+        Elegí quién juega hoy y armá dos equipos parejos según el MMR de cada uno.
       </p>
 
       <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto mb-4 border border-line/10 rounded-xl p-2 bg-line/3">
@@ -85,10 +82,7 @@ export function Randomizador({ players }: { players: Player[] }) {
             >
               <Avatar name={p.name} photoUrl={p.photoUrl} size={26} ring={active ? "#D4A017" : null} />
               <span className="flex-1 font-semibold">{p.name}</span>
-              <span className="flex items-center gap-0.5 text-gold-soft">
-                <Star size={11} fill="#D4A017" color="#D4A017" />
-                <span className="font-mono text-xs">{effectiveRating(p)}</span>
-              </span>
+              <span className="font-mono text-xs text-gold-soft">{ratingOf(p.id)}</span>
             </button>
           );
         })}
@@ -113,7 +107,7 @@ export function Randomizador({ players }: { players: Player[] }) {
                 >
                   Equipo {i === 0 ? "A" : "B"}
                 </span>
-                <Chip tone="gold">{avgRating(team).toFixed(1)} prom.</Chip>
+                <Chip tone="gold">{avg(team)} MMR prom.</Chip>
               </div>
               <div className="flex flex-col gap-1.5">
                 {team.map((p) => (

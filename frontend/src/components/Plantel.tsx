@@ -3,15 +3,39 @@ import { Camera, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
-import type { Player } from "../lib/types";
+import type { MmrEntry, Player } from "../lib/types";
 
 interface Props {
   players: Player[];
+  mmr: MmrEntry[];
   onCreate: (name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onUpdatePhoto: (id: string, photoUrl: string | null) => Promise<void>;
   onUpdateName: (id: string, name: string) => Promise<void>;
-  onUpdateRating: (id: string, rating: number | null) => Promise<void>;
+}
+
+const TIER_COLOR: Record<string, string> = {
+  Bronce: "#B08D57",
+  Plata: "#B8C0C8",
+  Oro: "#D4A017",
+  Platino: "#5EDB8C",
+  Diamante: "#3498DB",
+};
+
+function TierBadge({ playerId, mmr }: { playerId: string; mmr: MmrEntry[] }) {
+  const entry = mmr.find((m) => m.playerId === playerId);
+  if (!entry) return null;
+  const color = TIER_COLOR[entry.tier] ?? "#D4A017";
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border"
+      style={{ borderColor: `${color}55`, background: `${color}18`, color }}
+      title={`${entry.played} ${entry.played === 1 ? "partido jugado" : "partidos jugados"}`}
+    >
+      {entry.tier} · {entry.rating}
+    </span>
+  );
 }
 
 function PlayerPhotoButton({ player, onUpdatePhoto }: { player: Player; onUpdatePhoto: Props["onUpdatePhoto"] }) {
@@ -121,36 +145,7 @@ function PlayerNameField({ player, onUpdateName }: { player: Player; onUpdateNam
   );
 }
 
-function NumberRating({ player, onUpdateRating }: { player: Player; onUpdateRating: Props["onUpdateRating"] }) {
-  const click = (n: number) => {
-    onUpdateRating(player.id, player.rating === n ? null : n);
-  };
-
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-[10px] text-line/40 uppercase tracking-wide mr-0.5">Nivel</span>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const active = player.rating === n;
-        return (
-          <button
-            key={n}
-            onClick={() => click(n)}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border transition-colors"
-            style={{
-              borderColor: active ? "#D4A017" : "rgba(245,241,232,0.15)",
-              background: active ? "#D4A017" : "transparent",
-              color: active ? "#0F2419" : "rgba(245,241,232,0.5)",
-            }}
-          >
-            {n}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateName, onUpdateRating }: Props) {
+export function Plantel({ players, mmr, onCreate, onDelete, onUpdatePhoto, onUpdateName }: Props) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +185,9 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateNa
         </button>
       </div>
       {error && <p className="text-loss-soft text-xs mb-3">{error}</p>}
-      <p className="text-line/40 text-xs mb-4">Tocá la foto para cambiarla, el nombre para editarlo, o las estrellas para poner su nivel.</p>
+      <p className="text-line/40 text-xs mb-4">
+        Tocá la foto para cambiarla o el nombre para editarlo. El rango se calcula solo, según cómo le va en los partidos.
+      </p>
 
       {players.length === 0 ? (
         <EmptyState text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos." />
@@ -202,7 +199,7 @@ export function Plantel({ players, onCreate, onDelete, onUpdatePhoto, onUpdateNa
                 <PlayerPhotoButton player={p} onUpdatePhoto={onUpdatePhoto} />
                 <div className="flex flex-col gap-1">
                   <PlayerNameField player={p} onUpdateName={onUpdateName} />
-                  <NumberRating player={p} onUpdateRating={onUpdateRating} />
+                  <TierBadge playerId={p.id} mmr={mmr} />
                 </div>
               </div>
               <button onClick={() => onDelete(p.id)} className="text-line/40 hover:text-loss-soft p-1" title="Eliminar">

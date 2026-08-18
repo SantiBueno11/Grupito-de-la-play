@@ -20,8 +20,8 @@ public class GetRankingQueryHandler(IApplicationDbContext context)
             .ThenBy(m => m.Id)
             .ToListAsync(cancellationToken);
 
-        var stats = new Dictionary<Guid, (string Name, string? PhotoUrl, int Played, int Wins, int Losses, int Tags)>();
-        var timeline = new Dictionary<Guid, List<bool>>(); // true = ganó ese partido, false = perdió
+        var stats = new Dictionary<Guid, (string Name, string? PhotoUrl, int Played, int Wins, int Losses, int Tags, int Mmr, string Rank)>();
+        var timeline = new Dictionary<Guid, List<bool>>();
 
         foreach (var match in matches)
         {
@@ -33,7 +33,7 @@ public class GetRankingQueryHandler(IApplicationDbContext context)
                 var lost = mp.Team == Team.A ? match.TeamBWon : match.TeamAWon;
 
                 if (!stats.TryGetValue(mp.PlayerId, out var current))
-                    current = (mp.Player.Name, mp.Player.PhotoUrl, 0, 0, 0, 0);
+                    current = (mp.Player.Name, mp.Player.PhotoUrl, 0, 0, 0, 0, mp.Player.Mmr, mp.Player.Rank);
 
                 stats[mp.PlayerId] = (
                     current.Name,
@@ -41,10 +41,11 @@ public class GetRankingQueryHandler(IApplicationDbContext context)
                     current.Played + 1,
                     current.Wins + (won ? 1 : 0),
                     current.Losses + (lost ? 1 : 0),
-                    current.Tags + (mp.HasSpecialTag ? 1 : 0)
+                    current.Tags + (mp.HasSpecialTag ? 1 : 0),
+                    mp.Player.Mmr,
+                    mp.Player.Rank
                 );
 
-                // Solo nos importa ganó/perdió para la racha; los empates no cortan ni suman.
                 if (won || lost)
                 {
                     if (!timeline.TryGetValue(mp.PlayerId, out var list))
@@ -77,10 +78,12 @@ public class GetRankingQueryHandler(IApplicationDbContext context)
             kv.Value.Losses,
             kv.Value.Played == 0 ? 0 : Math.Round((double)kv.Value.Wins / kv.Value.Played, 4),
             kv.Value.Tags,
-            ComputeStreak(kv.Key)
+            ComputeStreak(kv.Key),
+            kv.Value.Mmr, // <--- Aquí inyectamos el MMR
+            kv.Value.Rank  // <--- Aquí inyectamos el Rango
         ))
-        .OrderByDescending(r => r.WinRate)
-        .ThenByDescending(r => r.Wins)
+        .OrderByDescending(r => r.Mmr)
+        .ThenByDescending(r => r.WinRate)
         .ToList();
     }
 }

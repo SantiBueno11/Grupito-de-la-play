@@ -2,12 +2,14 @@ namespace Futbol5.Application.Common.DTOs;
 
 public record RankingEntryDto(
     Guid PlayerId,
-    string PlayerName,
+    string Name,
     string? PhotoUrl,
     int Played,
     int Wins,
     int Losses,
     double WinRate,
-    int SpecialTagCount,
-    int CurrentStreak // positivo = racha de victorias, negativo = racha de derrotas, 0 = sin racha
+    int Tags,
+    int Streak,
+    int Mmr,
+    string Rank
 );

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { CalendarDays, ClipboardCheck, Shuffle, Swords, Trophy, Users } from "lucide-react";
 import { api } from "./lib/api";
-import type { AttendanceEntry, CreateMatchInput, Match, Player, RankingEntry } from "./lib/types";
+import type { AttendanceEntry, CreateMatchInput, Match, MmrEntry, Player, RankingEntry } from "./lib/types";
 import { Plantel } from "./components/Plantel";
 import { CargarPartido } from "./components/CargarPartido";
 import { Historial } from "./components/Historial";
@@ -29,6 +29,7 @@ export default function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [attendance, setAttendance] = useState<AttendanceEntry[]>([]);
+  const [mmr, setMmr] = useState<MmrEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -41,16 +42,18 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
-      const [p, m, r, a] = await Promise.all([
+      const [p, m, r, a, mm] = await Promise.all([
         api.players.list(),
         api.matches.list(),
         api.matches.ranking(),
         api.matches.attendance(),
+        api.matches.ranking()
       ]);
       setPlayers(p);
       setMatches(m);
       setRanking(r);
       setAttendance(a);
+      setMmr(mmr);
     } catch (e) {
       setLoadError(
         e instanceof Error
@@ -85,11 +88,6 @@ export default function App() {
     await loadAll();
   };
 
-  const updatePlayerRating = async (id: string, rating: number | null) => {
-    await api.players.updateRating(id, rating);
-    await loadAll();
-  };
-
   const createMatch = async (input: CreateMatchInput) => {
     await api.matches.create(input);
     await loadAll();
@@ -115,11 +113,11 @@ export default function App() {
             style={{ borderColor: "#D4A017" }}
           />
           <div>
-            <div className="font-mono text-[11px] tracking-[3px] text-win-soft mb-1">FÚTBOL 5 </div>
+            <div className="font-mono text-[11px] tracking-[3px] text-win-soft mb-1">FÚTBOL 5 · SEMANAL</div>
             <h1 className="font-display font-bold text-3xl m-0">Grupito de la Play</h1>
           </div>
         </div>
-        <p className="mt-3 text-line/60 text-sm">Vamos a ver quein la tiene mas larga y a quien se le dejan el toto roto</p>
+        <p className="mt-3 text-line/60 text-sm">Registro de partidos, plantel y tabla de la semana</p>
       </div>
 
       <div className="flex gap-1.5 px-5 pt-4 overflow-x-auto">
@@ -161,9 +159,9 @@ export default function App() {
         ) : tab === "caraacara" ? (
           <HeadToHead players={players} />
         ) : tab === "randomizador" ? (
-          <Randomizador players={players} />
+          <Randomizador players={players} mmr={mmr} />
         ) : (
-          <Plantel players={players} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} onUpdateRating={updatePlayerRating} />
+          <Plantel players={players} mmr={mmr} onCreate={createPlayer} onDelete={deletePlayer} onUpdatePhoto={updatePlayerPhoto} onUpdateName={updatePlayerName} />
         )}
       </div>
 

@@ -5,11 +5,29 @@ public class Player
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? PhotoUrl { get; private set; }
-    public int? Rating { get; private set; } // 1 a 5, null = sin calificar
+    
+    // El sistema de estrellas clásico para el randomizador (1 a 5)
+    public int? Rating { get; private set; } 
+
+    // Sistema de puntos competitivo (arrancan en 1000)
+    public int Mmr { get; private set; } = 1000;
+
+    // Rango dinámico basado en el MMR con los rangos clásicos
+    public string Rank => Mmr switch
+    {
+        < 800  => "Bronce",
+        < 1100 => "Plata",
+        < 1400 => "Oro",
+        < 1700 => "Platino",
+        < 2000 => "Diamante",
+        < 2300 => "Campeón",
+        < 2600 => "Gran Campeón",
+        _      => "Leyenda"
+    };
 
     private readonly List<MatchPlayer> _matchPlayers = new();
     public IReadOnlyCollection<MatchPlayer> MatchPlayers => _matchPlayers.AsReadOnly();
-
+    
     private Player() { }
 
     public Player(string name, string? photoUrl = null)
@@ -41,5 +59,20 @@ public class Player
             throw new ArgumentException("El nivel tiene que ser entre 1 y 5.", nameof(rating));
 
         Rating = rating;
+    }
+
+    // Método para actualizar los puntos después de un partido
+    public void UpdateMmr(int pointsToAdd)
+    {
+        Mmr += pointsToAdd;
+        
+        // Evitamos que los puntos bajen de cero
+        if (Mmr < 0) Mmr = 0;
+    }
+
+    // Método para resetear el MMR al histórico base
+    public void ResetMmr()
+    {
+        Mmr = 1000;
     }
 }

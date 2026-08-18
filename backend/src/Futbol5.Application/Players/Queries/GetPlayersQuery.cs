@@ -14,7 +14,8 @@ public class GetPlayersQueryHandler(IApplicationDbContext context)
     {
         return await context.Players
             .OrderBy(p => p.Name)
-            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating))
+            // ACÁ ESTÁ EL CAMBIO: Le pasamos los 6 parámetros exactos
+            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating, p.Mmr, p.Rank))
             .ToListAsync(cancellationToken);
     }
 }

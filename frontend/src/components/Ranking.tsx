@@ -4,6 +4,33 @@ import { Chip } from "./Chip";
 import { SectionTitle, EmptyState } from "./Shared";
 import type { RankingEntry } from "../lib/types";
 
+// Componente visual del rango con colores épicos para cada categoría
+function RankBadge({ rank, mmr }: { rank: string; mmr: number }) {
+  const getRankStyle = (r: string) => {
+    switch (r?.toLowerCase()) {
+      case "bronce": return "bg-[#CD7F32]/10 text-[#CD7F32] border-[#CD7F32]/30";
+      case "plata": return "bg-[#C0C0C0]/10 text-[#C0C0C0] border-[#C0C0C0]/30";
+      case "oro": return "bg-[#FFD700]/10 text-[#FFD700] border-[#FFD700]/30";
+      case "platino": return "bg-[#00CED1]/10 text-[#00CED1] border-[#00CED1]/30";
+      case "diamante": return "bg-[#B9F2FF]/10 text-[#B9F2FF] border-[#B9F2FF]/30";
+      case "campeón": return "bg-[#9333EA]/10 text-[#A855F7] border-[#9333EA]/30";
+      case "gran campeón": return "bg-[#EF4444]/10 text-[#F87171] border-[#EF4444]/30";
+      case "leyenda": return "bg-[#F59E0B]/10 text-[#FBBF24] border-[#F59E0B]/30";
+      default: return "bg-gray-500/10 text-gray-400 border-gray-500/30";
+    }
+  };
+
+  return (
+    <div 
+      className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider ${getRankStyle(rank)}`}
+      title={`${mmr} Puntos`}
+    >
+      <span>{rank}</span>
+      <span className="opacity-60">({mmr})</span>
+    </div>
+  );
+}
+
 function StreakChip({ streak }: { streak: number }) {
   if (streak === 0) return null;
   const isWin = streak > 0;
@@ -40,7 +67,7 @@ export function Ranking({ stats }: { stats: RankingEntry[] }) {
             <div key={p.playerId} className={`flex flex-col items-center w-24 ${i === 1 ? "order-first" : ""}`}>
               <Avatar name={p.playerName} photoUrl={p.photoUrl} size={i === 1 ? 56 : 44} ring={i === 1 ? "#D4A017" : "#5EDB8C"} />
               <div className="text-xs font-bold mt-1.5 text-center break-words leading-tight">{p.playerName}</div>
-              <div className="text-[11px] text-line/50 font-mono">{Math.round(p.winRate * 100)}%</div>
+              <div className="text-[11px] text-line/50 font-mono mt-0.5">{p.rank} ({p.mmr})</div>
             </div>
           ) : <div key={i} />
         )}
@@ -52,7 +79,12 @@ export function Ranking({ stats }: { stats: RankingEntry[] }) {
             <div className="flex items-center gap-3">
               <span className="w-5 text-center font-mono text-line/40 text-[13px]">{i + 1}</span>
               <Avatar name={s.playerName} photoUrl={s.photoUrl} size={34} />
-              <span className="font-semibold text-sm">{s.playerName}</span>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="font-semibold text-sm leading-tight">{s.playerName}</span>
+                {s.rank && s.mmr !== undefined && (
+                  <RankBadge rank={s.rank} mmr={s.mmr} />
+                )}
+              </div>
               {s.specialTagCount > 0 && <Chip tone="fun">gay x{s.specialTagCount}</Chip>}
             </div>
             <div className="flex items-center gap-2">

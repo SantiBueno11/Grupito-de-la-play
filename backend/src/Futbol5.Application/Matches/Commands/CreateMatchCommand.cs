@@ -31,10 +31,12 @@ public class CreateMatchCommandHandler(IApplicationDbContext context)
             .Concat(request.TeamB.Select(p => p.PlayerId))
             .ToList();
 
-        var existingCount = await context.Players
-            .CountAsync(p => allIds.Contains(p.Id), cancellationToken);
+        // Traemos todos los jugadores reales de la base de datos de una sola vez
+        var jugadoresDb = await context.Players
+            .Where(p => allIds.Contains(p.Id))
+            .ToListAsync(cancellationToken);
 
-        if (existingCount != allIds.Distinct().Count())
+        if (jugadoresDb.Count != allIds.Distinct().Count())
             throw new InvalidOperationException("Alguno de los jugadores no existe o está repetido.");
 
         var match = new Match(request.Date, request.TeamAName, request.TeamBName, request.ScoreA, request.ScoreB);
@@ -46,6 +48,35 @@ public class CreateMatchCommandHandler(IApplicationDbContext context)
             match.AddPlayer(p.PlayerId, Team.B, p.HasSpecialTag);
 
         context.Matches.Add(match);
+
+        // --- INICIO LÓGICA AUTOMÁTICA DE MMR ---
+        if (request.ScoreA != request.ScoreB) // Si no fue un empate
+        {
+            var ganadoresIds = request.ScoreA > request.ScoreB 
+                ? request.TeamA.Select(t => t.PlayerId).ToList() 
+                : request.TeamB.Select(t => t.PlayerId).ToList();
+
+            var perdedoresIds = request.ScoreA > request.ScoreB 
+                ? request.TeamB.Select(t => t.PlayerId).ToList() 
+                : request.TeamA.Select(t => t.PlayerId).ToList();
+
+            int diferenciaGoles = Math.Abs(request.ScoreA - request.ScoreB);
+            int puntosEnJuego = 15 + (diferenciaGoles * 2);
+
+            foreach (var jugador in jugadoresDb)
+            {
+                if (ganadoresIds.Contains(jugador.Id))
+                {
+                    jugador.UpdateMmr(puntosEnJuego); // Suma si ganó
+                }
+                else if (perdedoresIds.Contains(jugador.Id))
+                {
+                    jugador.UpdateMmr(-puntosEnJuego); // Resta si perdió
+                }
+            }
+        }
+        // --- FIN LÓGICA AUTOMÁTICA DE MMR ---
+
         await context.SaveChangesAsync(cancellationToken);
 
         return match.Id;
