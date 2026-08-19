@@ -38,7 +38,12 @@ public static class MatchesEndpoints
         {
             try
             {
+                // 1. Guardamos el partido
                 var id = await mediator.Send(command);
+                
+                // 2. Recalculamos el MMR de todos automáticamente tras cada partido
+                await mediator.Send(new RecalculateMmrCommand());
+
                 return Results.Created($"/api/matches/{id}", new { id });
             }
             catch (InvalidOperationException ex)
@@ -50,6 +55,10 @@ public static class MatchesEndpoints
         group.MapDelete("/{id:guid}", async (Guid id, IMediator mediator) =>
         {
             var deleted = await mediator.Send(new DeleteMatchCommand(id));
+            
+            // Recalculamos el MMR también si se elimina un partido
+            if (deleted) await mediator.Send(new RecalculateMmrCommand());
+            
             return deleted ? Results.NoContent() : Results.NotFound();
         });
     }

@@ -4,7 +4,7 @@ public record MmrEntryDto(
     Guid PlayerId,
     string PlayerName,
     string? PhotoUrl,
-    int Rating,
-    string Tier,
-    int Played
+    string Rank,
+    int Mmr,
+    int GamesPlayed
 );

@@ -42,9 +42,9 @@ export interface MmrEntry {
   rank: string;
   mmr: number;
   gamesPlayed: number;
-  wins: number;
-  losses: number;
-  draws: number;
+  wins?: number;
+  losses?: number;
+  draws?: number;
 }
 
 export interface AttendanceEntry {
@@ -71,15 +71,6 @@ export interface HeadToHead {
   matchesAsTeammates: number;
   winsTogether: number;
   lossesTogether: number;
-}
-
-export interface MmrEntry {
-  playerId: string;
-  playerName: string;
-  photoUrl?: string | null;
-  rating: number;
-  tier: string;
-  played: number;
 }
 
 export interface CreateMatchPlayerInput {
