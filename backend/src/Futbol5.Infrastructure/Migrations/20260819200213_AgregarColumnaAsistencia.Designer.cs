@@ -2,6 +2,7 @@
 using Futbol5.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -9,9 +10,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Futbol5.Infrastructure.Migrations
 {
     [DbContext(typeof(Futbol5DbContext))]
-    partial class Futbol5DbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819200213_AgregarColumnaAsistencia")]
+    partial class AgregarColumnaAsistencia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");

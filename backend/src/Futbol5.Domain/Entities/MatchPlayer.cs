@@ -12,14 +12,19 @@ public class MatchPlayer
 
     public Team Team { get; private set; }
     public bool HasSpecialTag { get; private set; }
+    
+    // NUEVO CAMPO:
+    public bool Asistio { get; private set; }
 
     private MatchPlayer() { }
 
-    public MatchPlayer(Guid matchId, Guid playerId, Team team, bool hasSpecialTag)
+    // Actualizamos el constructor para recibir si asistió
+    public MatchPlayer(Guid matchId, Guid playerId, Team team, bool hasSpecialTag, bool asistio)
     {
         MatchId = matchId;
         PlayerId = playerId;
         Team = team;
         HasSpecialTag = hasSpecialTag;
+        Asistio = asistio;
     }
 }

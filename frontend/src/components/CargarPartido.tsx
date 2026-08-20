@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Search } from "lucide-react";
+import { Check, Search, UserCheck, UserX } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import type { CreateMatchInput, Player } from "../lib/types";
@@ -43,6 +43,7 @@ function TeamPicker({
             const active = selected.includes(p.id);
             return (
               <button
+                type="button"
                 key={p.id}
                 onClick={() => onToggle(p.id)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm"
@@ -72,18 +73,32 @@ export function CargarPartido({ players, onSave }: Props) {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [tags, setTags] = useState<Record<string, boolean>>({});
+  
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const toggle = (list: string[], setList: (v: string[]) => void, other: string[], id: string) => {
-    if (list.includes(id)) return setList(list.filter((x) => x !== id));
+    if (list.includes(id)) {
+      setList(list.filter((x) => x !== id));
+      return;
+    }
     if (other.includes(id)) return;
+    
     setList([...list, id]);
+    setAttendance((prev) => ({ ...prev, [id]: true }));
   };
 
   const toggleTag = (id: string) => setTags((t) => ({ ...t, [id]: !t[id] }));
+  
+  const toggleAttendance = (id: string) => {
+    setAttendance((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }));
+  };
 
   const canSave = Boolean(date && teamA.length > 0 && teamB.length > 0 && scoreA !== "" && scoreB !== "");
+
+  const allSelected = [...teamA, ...teamB];
 
   const submit = async () => {
     if (!canSave) return;
@@ -96,10 +111,21 @@ export function CargarPartido({ players, onSave }: Props) {
         teamBName: teamBName.trim() || "Equipo B",
         scoreA: Number(scoreA),
         scoreB: Number(scoreB),
-        teamA: teamA.map((id) => ({ playerId: id, hasSpecialTag: Boolean(tags[id]) })),
-        teamB: teamB.map((id) => ({ playerId: id, hasSpecialTag: Boolean(tags[id]) })),
+        teamA: teamA.map((id) => ({ 
+          playerId: id, 
+          hasSpecialTag: Boolean(tags[id])
+        })),
+        teamB: teamB.map((id) => ({ 
+          playerId: id, 
+          hasSpecialTag: Boolean(tags[id])
+        })),
+        // Array de asistencia independiente con el formato requerido
+        attendance: allSelected.map((id) => ({
+          playerId: id,
+          asistio: attendance[id] !== false
+        }))
       });
-      setTeamA([]); setTeamB([]); setScoreA(""); setScoreB(""); setTags({});
+      setTeamA([]); setTeamB([]); setScoreA(""); setScoreB(""); setTags({}); setAttendance({});
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar el partido");
     } finally {
@@ -115,8 +141,6 @@ export function CargarPartido({ players, onSave }: Props) {
       </section>
     );
   }
-
-  const allSelected = [...teamA, ...teamB];
 
   return (
     <section>
@@ -143,6 +167,43 @@ export function CargarPartido({ players, onSave }: Props) {
       </div>
 
       {allSelected.length > 0 && (
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">
+            Control de Asistencia (¿Quiénes fueron a jugar?)
+          </label>
+          <div className="flex flex-col gap-2 bg-line/3 border border-line/10 rounded-xl p-3">
+            {allSelected.map((id) => {
+              const p = players.find((x) => x.id === id);
+              if (!p) return null;
+              const asistio = attendance[id] !== false;
+
+              return (
+                <div key={id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-line/5">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={p.name} photoUrl={p.photoUrl} size={24} />
+                    <span className="text-xs font-bold text-line/80">{p.name}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleAttendance(id)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                      asistio 
+                        ? "bg-win/15 text-win-soft border border-win/30" 
+                        : "bg-loss/15 text-loss-soft border border-loss/30"
+                    }`}
+                  >
+                    {asistio ? <UserCheck size={14} /> : <UserX size={14} />}
+                    {asistio ? "Asistió (+20)" : "Faltó (-50)"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {allSelected.length > 0 && (
         <>
           <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">Marcar algo especial (opcional)</label>
           <div className="flex flex-wrap gap-2 mb-5">
@@ -152,6 +213,7 @@ export function CargarPartido({ players, onSave }: Props) {
               const active = Boolean(tags[id]);
               return (
                 <button
+                  type="button"
                   key={id} onClick={() => toggleTag(id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
                   style={{
@@ -171,6 +233,7 @@ export function CargarPartido({ players, onSave }: Props) {
       {error && <p className="text-loss-soft text-xs mb-3">{error}</p>}
 
       <button
+        type="button"
         onClick={submit} disabled={!canSave || saving}
         className="w-full flex items-center justify-center gap-1.5 bg-win text-pitch-ink rounded-lg py-2.5 font-bold text-sm disabled:opacity-40"
       >

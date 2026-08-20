@@ -32,11 +32,12 @@ public class Match
         ScoreB = scoreB;
     }
 
-    public void AddPlayer(Guid playerId, Team team, bool hasSpecialTag = false)
+    public void AddPlayer(Guid playerId, Team team, bool hasSpecialTag = false, bool asistio = true)
     {
         if (_matchPlayers.Any(mp => mp.PlayerId == playerId))
             throw new InvalidOperationException("El jugador ya está cargado en este partido.");
 
-        _matchPlayers.Add(new MatchPlayer(Id, playerId, team, hasSpecialTag));
+        // Pasamos el parámetro asistio al constructor de MatchPlayer
+        _matchPlayers.Add(new MatchPlayer(Id, playerId, team, hasSpecialTag, asistio));
     }
 }

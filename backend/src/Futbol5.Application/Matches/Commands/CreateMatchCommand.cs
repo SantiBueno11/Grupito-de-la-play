@@ -1,5 +1,6 @@
 using Futbol5.Application.Common.DTOs;
 using Futbol5.Application.Common.Interfaces;
+using Futbol5.Application.Matches.Commands;
 using Futbol5.Domain.Entities;
 using Futbol5.Domain.Enums;
 using MediatR;
@@ -7,7 +8,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Futbol5.Application.Matches.Commands;
 
-public record CreateMatchPlayerInput(Guid PlayerId, bool HasSpecialTag);
+public record CreateMatchPlayerInput(
+    Guid PlayerId,
+    bool HasSpecialTag,
+    bool Asistio
+);
+
+public record CreateMatchAttendanceInput(
+    Guid PlayerId,
+    bool Asistio
+);
 
 public record CreateMatchCommand(
     DateOnly Date,
@@ -16,68 +26,150 @@ public record CreateMatchCommand(
     int ScoreA,
     int ScoreB,
     List<CreateMatchPlayerInput> TeamA,
-    List<CreateMatchPlayerInput> TeamB
+    List<CreateMatchPlayerInput> TeamB,
+    List<CreateMatchAttendanceInput> Attendance
 ) : IRequest<Guid>;
 
-public class CreateMatchCommandHandler(IApplicationDbContext context)
-    : IRequestHandler<CreateMatchCommand, Guid>
+public class CreateMatchCommandHandler(
+    IApplicationDbContext context,
+    IMediator mediator
+) : IRequestHandler<CreateMatchCommand, Guid>
 {
-    public async Task<Guid> Handle(CreateMatchCommand request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(
+        CreateMatchCommand request,
+        CancellationToken cancellationToken)
     {
-        if (request.TeamA.Count == 0 || request.TeamB.Count == 0)
-            throw new InvalidOperationException("Los dos equipos necesitan al menos un jugador.");
+        // ============================================================
+        // 🚨 CÁMARA OCULTA: ¿Entra acá cuando guardás el partido?
+        // ============================================================
+        Console.WriteLine("\n⚽ [DEBUG] ¡ESTOY ENTRANDO A CREAR EL PARTIDO! ⚽\n");
 
-        var allIds = request.TeamA.Select(p => p.PlayerId)
+        // ============================================================
+        // 1. VALIDAR EQUIPOS
+        // ============================================================
+
+        if (request.TeamA.Count == 0 || request.TeamB.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "Los dos equipos necesitan al menos un jugador."
+            );
+        }
+
+        // ============================================================
+        // 2. OBTENER TODOS LOS IDS
+        // ============================================================
+
+        var allIds = request.TeamA
+            .Select(p => p.PlayerId)
             .Concat(request.TeamB.Select(p => p.PlayerId))
+            .Concat(request.Attendance.Select(p => p.PlayerId))
+            .Distinct()
             .ToList();
 
-        // Traemos todos los jugadores reales de la base de datos de una sola vez
+        // ============================================================
+        // 3. COMPROBAR QUE TODOS EXISTAN
+        // ============================================================
+
         var jugadoresDb = await context.Players
             .Where(p => allIds.Contains(p.Id))
             .ToListAsync(cancellationToken);
 
-        if (jugadoresDb.Count != allIds.Distinct().Count())
-            throw new InvalidOperationException("Alguno de los jugadores no existe o está repetido.");
+        if (jugadoresDb.Count != allIds.Count)
+        {
+            throw new InvalidOperationException(
+                "Alguno de los jugadores no existe."
+            );
+        }
 
-        var match = new Match(request.Date, request.TeamAName, request.TeamBName, request.ScoreA, request.ScoreB);
+        // ============================================================
+        // 4. CREAR EL PARTIDO
+        // ============================================================
+
+        var match = new Match(
+            request.Date,
+            request.TeamAName,
+            request.TeamBName,
+            request.ScoreA,
+            request.ScoreB
+        );
+
+        // ============================================================
+        // DICCIONARIO DE ASISTENCIAS
+        // ============================================================
+        var diccionarioAsistencias = request.Attendance
+            .ToDictionary(a => a.PlayerId, a => a.Asistio);
+
+        // ============================================================
+        // 5. AGREGAR JUGADORES DEL EQUIPO A
+        // ============================================================
 
         foreach (var p in request.TeamA)
-            match.AddPlayer(p.PlayerId, Team.A, p.HasSpecialTag);
+        {
+            bool realmenteAsistio = diccionarioAsistencias.ContainsKey(p.PlayerId) 
+                ? diccionarioAsistencias[p.PlayerId] 
+                : p.Asistio;
+
+            match.AddPlayer(
+                p.PlayerId,
+                Team.A,
+                p.HasSpecialTag,
+                realmenteAsistio
+            );
+        }
+
+        // ============================================================
+        // 6. AGREGAR JUGADORES DEL EQUIPO B
+        // ============================================================
 
         foreach (var p in request.TeamB)
-            match.AddPlayer(p.PlayerId, Team.B, p.HasSpecialTag);
+        {
+            bool realmenteAsistio = diccionarioAsistencias.ContainsKey(p.PlayerId) 
+                ? diccionarioAsistencias[p.PlayerId] 
+                : p.Asistio;
+
+            match.AddPlayer(
+                p.PlayerId,
+                Team.B,
+                p.HasSpecialTag,
+                realmenteAsistio
+            );
+        }
+
+        // ============================================================
+        // 7. AGREGAR LOS QUE FALTARON Y NO ESTABAN EN NINGÚN EQUIPO
+        // ============================================================
+
+        var jugadoresEnEquipos = request.TeamA
+            .Select(p => p.PlayerId)
+            .Concat(request.TeamB.Select(p => p.PlayerId))
+            .ToHashSet();
+
+        foreach (var asistencia in request.Attendance)
+        {
+            if (jugadoresEnEquipos.Contains(asistencia.PlayerId))
+                continue;
+
+            if (!asistencia.Asistio)
+            {
+                match.AddPlayer(
+                    asistencia.PlayerId,
+                    Team.A,
+                    false,
+                    false
+                );
+            }
+        }
+
+        // ============================================================
+        // 8. GUARDAR PARTIDO Y DISPARAR EL RECÁLCULO AUTOMÁTICO
+        // ============================================================
 
         context.Matches.Add(match);
 
-        // --- INICIO LÓGICA AUTOMÁTICA DE MMR ---
-        if (request.ScoreA != request.ScoreB) // Si no fue un empate
-        {
-            var ganadoresIds = request.ScoreA > request.ScoreB 
-                ? request.TeamA.Select(t => t.PlayerId).ToList() 
-                : request.TeamB.Select(t => t.PlayerId).ToList();
-
-            var perdedoresIds = request.ScoreA > request.ScoreB 
-                ? request.TeamB.Select(t => t.PlayerId).ToList() 
-                : request.TeamA.Select(t => t.PlayerId).ToList();
-
-            int diferenciaGoles = Math.Abs(request.ScoreA - request.ScoreB);
-            int puntosEnJuego = 15 + (diferenciaGoles * 2);
-
-            foreach (var jugador in jugadoresDb)
-            {
-                if (ganadoresIds.Contains(jugador.Id))
-                {
-                    jugador.UpdateMmr(puntosEnJuego); // Suma si ganó
-                }
-                else if (perdedoresIds.Contains(jugador.Id))
-                {
-                    jugador.UpdateMmr(-puntosEnJuego); // Resta si perdió
-                }
-            }
-        }
-        // --- FIN LÓGICA AUTOMÁTICA DE MMR ---
-
         await context.SaveChangesAsync(cancellationToken);
+
+        // Esto ejecuta el recálculo de MMR y aplica los -50 a los ausentes
+        await mediator.Send(new RecalculateMmrCommand(), cancellationToken);
 
         return match.Id;
     }

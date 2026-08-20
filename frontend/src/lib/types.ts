@@ -86,4 +86,5 @@ export interface CreateMatchInput {
   scoreB: number;
   teamA: CreateMatchPlayerInput[];
   teamB: CreateMatchPlayerInput[];
+  attendance: Array<{ playerId: string; asistio: boolean }>; // <--- Agregá esta línea
 }
