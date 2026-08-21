@@ -11,31 +11,34 @@ public class RecalculateMmrCommandHandler(
     IApplicationDbContext context
 ) : IRequestHandler<RecalculateMmrCommand, string>
 {
+    private const int MmrInicial = 1000;
+    private const int PuntosPorAsistir = 20;
+    private const int PenalizacionPorFaltar = 50;
+    private const int PuntosBasePorVictoria = 15;
+    private const int PuntosPorGolDeDiferencia = 2;
+
     public async Task<string> Handle(
         RecalculateMmrCommand request,
         CancellationToken cancellationToken)
     {
-        // ============================================================
-        // CARTEL DE PRUEBA: Para saber si tu botón realmente llama a esto
-        // ============================================================
         Console.WriteLine("\n=================================================");
         Console.WriteLine("🚨 [DEBUG] ¡ESTOY RECALCULANDO LOS PUNTOS! 🚨");
         Console.WriteLine("=================================================\n");
 
         // ============================================================
-        // 1. OBTENER TODOS LOS JUGADORES
+        // 1. OBTENER TODOS LOS JUGADORES (sin tracking: no queremos que
+        //    estas instancias queden "pegadas" al DbContext)
         // ============================================================
 
         var players = await context.Players
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Todos empiezan con 1000 puntos
         var mmrFinales = new Dictionary<Guid, int>();
 
         foreach (var player in players)
         {
-            mmrFinales[player.Id] = 1000;
+            mmrFinales[player.Id] = MmrInicial;
         }
 
         // ============================================================
@@ -56,12 +59,10 @@ public class RecalculateMmrCommandHandler(
         {
             bool esEmpate = match.ScoreA == match.ScoreB;
 
-            int diferenciaGoles = Math.Abs(
-                match.ScoreA - match.ScoreB
-            );
+            int diferenciaGoles = Math.Abs(match.ScoreA - match.ScoreB);
 
             // Puntos que están en juego según diferencia de goles
-            int puntosEnJuego = 15 + (diferenciaGoles * 2);
+            int puntosEnJuego = PuntosBasePorVictoria + (diferenciaGoles * PuntosPorGolDeDiferencia);
 
             bool ganoEquipoA = match.ScoreA > match.ScoreB;
 
@@ -75,29 +76,26 @@ public class RecalculateMmrCommandHandler(
                     .FirstOrDefault(x => x.PlayerId == player.Id);
 
                 // ====================================================
-                // CASO 1: EL JUGADOR NO FORMABA PARTE DEL PARTIDO
+                // CASO 1: EL JUGADOR NO ESTABA CONVOCADO A ESTE PARTIDO
                 // ====================================================
-
+                // OJO: esto ya NO penaliza. Antes restaba -50 acá también,
+                // lo cual castigaba a jugadores que ni siquiera fueron
+                // invitados a esa fecha (ej: alguien que se sumó al grupo
+                // después). Si no hay registro de convocatoria, el partido
+                // simplemente no afecta el MMR de ese jugador.
                 if (mp == null)
                 {
-                    // No está entre los 10 que jugaron, por ende NO FUE.
-                    // Castigo directo: pierde 50 puntos.
-                    mmrFinales[player.Id] -= 50;
-
-                    // AVISO EN CONSOLA PARA VER A QUIÉN LE RESTA
-                    Console.WriteLine($"[DEBUG] ¡FALTA! El jugador {player.Id} se quedó afuera. Puntos: {mmrFinales[player.Id]}");
+                    continue;
                 }
 
                 // ====================================================
-                // CASO 2: EL JUGADOR ESTABA EN EL PARTIDO PERO FALTÓ
+                // CASO 2: ESTABA CONVOCADO PERO FALTÓ
                 // ====================================================
 
-                else if (!mp.Asistio)
+                if (!mp.Asistio)
                 {
-                    // FALTÓ AL PARTIDO (Marcado en rojo)
-                    mmrFinales[player.Id] -= 50;
+                    mmrFinales[player.Id] -= PenalizacionPorFaltar;
 
-                    // AVISO EN CONSOLA PARA VER A QUIÉN LE RESTA
                     Console.WriteLine($"[DEBUG] ¡FALTA! El jugador {player.Id} tenía la X roja. Puntos: {mmrFinales[player.Id]}");
                 }
 
@@ -107,20 +105,10 @@ public class RecalculateMmrCommandHandler(
 
                 else
                 {
-                    // ------------------------------------------------
-                    // EMPATE
-                    // ------------------------------------------------
-
                     if (esEmpate)
                     {
-                        // +20 por asistir
-                        mmrFinales[player.Id] += 20;
+                        mmrFinales[player.Id] += PuntosPorAsistir;
                     }
-
-                    // ------------------------------------------------
-                    // PARTIDO CON GANADOR
-                    // ------------------------------------------------
-
                     else
                     {
                         bool esDelEquipoA = mp.Team == Team.A;
@@ -129,31 +117,19 @@ public class RecalculateMmrCommandHandler(
                             (ganoEquipoA && esDelEquipoA) ||
                             (!ganoEquipoA && !esDelEquipoA);
 
-                        // --------------------------------------------
-                        // GANÓ
-                        // --------------------------------------------
-
                         if (ganoJugador)
                         {
-                            // +20 por asistir + puntos por ganar
-                            mmrFinales[player.Id] += 20 + puntosEnJuego;
+                            mmrFinales[player.Id] += PuntosPorAsistir + puntosEnJuego;
                         }
-
-                        // --------------------------------------------
-                        // PERDIÓ
-                        // --------------------------------------------
-
                         else
                         {
-                            // Pierde los puntos del partido
                             mmrFinales[player.Id] -= puntosEnJuego;
                         }
                     }
                 }
 
                 // ====================================================
-                // REGLA DE PIEDAD
-                // Nunca permitir menos de 0 puntos
+                // REGLA DE PIEDAD: nunca menos de 0 puntos
                 // ====================================================
 
                 if (mmrFinales[player.Id] < 0)
@@ -163,20 +139,27 @@ public class RecalculateMmrCommandHandler(
             }
         }
 
-      // 4. GUARDAR LOS NUEVOS MMR EN LA BASE DE DATOS
-foreach (var kvp in mmrFinales)
-{
-    await context.Players
-        .Where(p => p.Id == kvp.Key)
-        .ExecuteUpdateAsync(
-            setters => setters
-                .SetProperty(
-                    p => p.Mmr, // <-- Tiene que ser Mmr
-                    kvp.Value
-                ),
-            cancellationToken
-        );
-}
+        // ============================================================
+        // 4. GUARDAR LOS NUEVOS MMR EN LA BASE DE DATOS
+        // ============================================================
+        // ExecuteUpdateAsync es un bulk update: NO pasa por el Change
+        // Tracker de EF. Por eso, después de terminar, limpiamos el
+        // tracker: si alguna entidad Player quedó "pegada" en memoria
+        // de antes (por ejemplo desde CreateMatchCommandHandler dentro
+        // del mismo scope), esto evita que EF la siga devolviendo con
+        // el valor viejo en la próxima consulta de este mismo request.
+
+        foreach (var kvp in mmrFinales)
+        {
+            await context.Players
+                .Where(p => p.Id == kvp.Key)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(p => p.Mmr, kvp.Value),
+                    cancellationToken
+                );
+        }
+
+        context.ChangeTracker.Clear();
 
         Console.WriteLine("🚨 [DEBUG] ¡GUARDADO TERMINADO EN LA BASE DE DATOS! 🚨\n");
 
