@@ -26,29 +26,47 @@ public class RecalculateMmrCommandHandler(
         Console.WriteLine("=================================================\n");
 
         // ============================================================
-        // 1. OBTENER TODOS LOS JUGADORES (sin tracking: no queremos que
-        //    estas instancias queden "pegadas" al DbContext)
+        // 1. OBTENER SOLO LOS IDs DE LOS JUGADORES
         // ============================================================
+        // Importante: proyectamos SOLO el Id (nunca el objeto Player
+        // completo). Player.PhotoUrl guarda la foto en base64 (varios KB
+        // por jugador), y traerla acá no sirve para nada: solo infla la
+        // memoria del proceso. En Render (plan free, poca RAM) esto era
+        // suficiente para tirar abajo el proceso con un crash nativo
+        // (status 139 / segfault) al procesar el historial completo.
 
-        var players = await context.Players
+        var playerIds = await context.Players
             .AsNoTracking()
+            .Select(p => p.Id)
             .ToListAsync(cancellationToken);
 
         var mmrFinales = new Dictionary<Guid, int>();
 
-        foreach (var player in players)
+        foreach (var id in playerIds)
         {
-            mmrFinales[player.Id] = MmrInicial;
+            mmrFinales[id] = MmrInicial;
         }
 
         // ============================================================
         // 2. OBTENER TODOS LOS PARTIDOS ORDENADOS POR FECHA
         // ============================================================
+        // Mismo criterio: proyectamos solo los campos que el cálculo
+        // necesita (fecha, resultado, y de cada MatchPlayer: PlayerId,
+        // Team, Asistio). Nada de navegar a Player/PhotoUrl desde acá.
 
         var matches = await context.Matches
-            .Include(m => m.MatchPlayers)
-            .AsNoTracking()
             .OrderBy(m => m.Date)
+            .Select(m => new
+            {
+                m.ScoreA,
+                m.ScoreB,
+                MatchPlayers = m.MatchPlayers.Select(mp => new
+                {
+                    mp.PlayerId,
+                    mp.Team,
+                    mp.Asistio
+                }).ToList()
+            })
             .ToListAsync(cancellationToken);
 
         // ============================================================
@@ -66,14 +84,14 @@ public class RecalculateMmrCommandHandler(
 
             bool ganoEquipoA = match.ScoreA > match.ScoreB;
 
-            foreach (var player in players)
+            foreach (var id in playerIds)
             {
-                if (!mmrFinales.ContainsKey(player.Id))
+                if (!mmrFinales.ContainsKey(id))
                     continue;
 
                 // Buscar si el jugador tiene participación registrada en este partido
                 var mp = match.MatchPlayers
-                    .FirstOrDefault(x => x.PlayerId == player.Id);
+                    .FirstOrDefault(x => x.PlayerId == id);
 
                 // ====================================================
                 // CASO 1: EL JUGADOR NO ESTABA CONVOCADO A ESTE PARTIDO
@@ -94,9 +112,9 @@ public class RecalculateMmrCommandHandler(
 
                 if (!mp.Asistio)
                 {
-                    mmrFinales[player.Id] -= PenalizacionPorFaltar;
+                    mmrFinales[id] -= PenalizacionPorFaltar;
 
-                    Console.WriteLine($"[DEBUG] ¡FALTA! El jugador {player.Id} tenía la X roja. Puntos: {mmrFinales[player.Id]}");
+                    Console.WriteLine($"[DEBUG] ¡FALTA! El jugador {id} tenía la X roja. Puntos: {mmrFinales[id]}");
                 }
 
                 // ====================================================
@@ -107,7 +125,7 @@ public class RecalculateMmrCommandHandler(
                 {
                     if (esEmpate)
                     {
-                        mmrFinales[player.Id] += PuntosPorAsistir;
+                        mmrFinales[id] += PuntosPorAsistir;
                     }
                     else
                     {
@@ -119,11 +137,11 @@ public class RecalculateMmrCommandHandler(
 
                         if (ganoJugador)
                         {
-                            mmrFinales[player.Id] += PuntosPorAsistir + puntosEnJuego;
+                            mmrFinales[id] += PuntosPorAsistir + puntosEnJuego;
                         }
                         else
                         {
-                            mmrFinales[player.Id] -= puntosEnJuego;
+                            mmrFinales[id] -= puntosEnJuego;
                         }
                     }
                 }
@@ -132,9 +150,9 @@ public class RecalculateMmrCommandHandler(
                 // REGLA DE PIEDAD: nunca menos de 0 puntos
                 // ====================================================
 
-                if (mmrFinales[player.Id] < 0)
+                if (mmrFinales[id] < 0)
                 {
-                    mmrFinales[player.Id] = 0;
+                    mmrFinales[id] = 0;
                 }
             }
         }
@@ -168,7 +186,7 @@ public class RecalculateMmrCommandHandler(
         // ============================================================
 
         return
-            $"Éxito: se recalculó el MMR de {players.Count} jugadores " +
+            $"Éxito: se recalculó el MMR de {playerIds.Count} jugadores " +
             $"usando {matches.Count} partidos históricos.";
     }
 }
