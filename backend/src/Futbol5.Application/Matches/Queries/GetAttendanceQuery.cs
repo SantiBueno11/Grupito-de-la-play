@@ -20,7 +20,12 @@ public class GetAttendanceQueryHandler(IApplicationDbContext context)
             .Select(p => new { p.Id, p.Name, p.PhotoUrl })
             .ToListAsync(cancellationToken);
 
+        // Importante: solo cuenta como "jugado" si Asistio es true.
+        // Antes contaba cualquier fila de MatchPlayers, incluyendo a los
+        // marcados como ausentes (que también generan una fila, con
+        // Asistio = false), por eso todos aparecian como que jugaron.
         var playedCounts = await context.MatchPlayers
+            .Where(mp => mp.Asistio)
             .GroupBy(mp => mp.PlayerId)
             .Select(g => new { PlayerId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.PlayerId, g => g.Count, cancellationToken);

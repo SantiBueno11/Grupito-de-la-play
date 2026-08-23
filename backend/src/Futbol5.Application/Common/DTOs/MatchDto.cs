@@ -10,5 +10,6 @@ public record MatchDto(
     int ScoreA,
     int ScoreB,
     List<MatchPlayerDto> TeamA,
-    List<MatchPlayerDto> TeamB
+    List<MatchPlayerDto> TeamB,
+    List<MatchPlayerDto> Ausentes
 );

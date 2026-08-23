@@ -26,10 +26,18 @@ public class GetMatchesQueryHandler(IApplicationDbContext context)
             m.TeamBName,
             m.ScoreA,
             m.ScoreB,
-            m.MatchPlayers.Where(mp => mp.Team == Team.A)
+            // Equipo A: solo los que jugaron de verdad (Asistio = true).
+            // Los ausentes quedan con Team = A por un detalle interno,
+            // pero NO son parte del roster que jugó.
+            m.MatchPlayers.Where(mp => mp.Team == Team.A && mp.Asistio)
                 .Select(mp => new MatchPlayerDto(mp.PlayerId, mp.Player!.Name, mp.Player!.PhotoUrl, mp.HasSpecialTag))
                 .ToList(),
-            m.MatchPlayers.Where(mp => mp.Team == Team.B)
+            m.MatchPlayers.Where(mp => mp.Team == Team.B && mp.Asistio)
+                .Select(mp => new MatchPlayerDto(mp.PlayerId, mp.Player!.Name, mp.Player!.PhotoUrl, mp.HasSpecialTag))
+                .ToList(),
+            // Ausentes: cualquiera marcado con Asistio = false, sin importar
+            // el Team que le haya quedado asignado internamente.
+            m.MatchPlayers.Where(mp => !mp.Asistio)
                 .Select(mp => new MatchPlayerDto(mp.PlayerId, mp.Player!.Name, mp.Player!.PhotoUrl, mp.HasSpecialTag))
                 .ToList()
         )).ToList();

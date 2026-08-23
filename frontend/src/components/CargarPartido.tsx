@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Search, UserCheck, UserX } from "lucide-react";
+import { Check, Search, UserX } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import type { CreateMatchInput, Player } from "../lib/types";
@@ -9,96 +9,38 @@ interface Props {
   onSave: (input: CreateMatchInput) => Promise<void>;
 }
 
-function TeamPicker({
-  label, onLabelChange, players, selected, onToggle, accent,
-}: {
-  label: string; onLabelChange: (v: string) => void; players: Player[];
-  selected: string[]; onToggle: (id: string) => void; accent: string;
-}) {
-  const [search, setSearch] = useState("");
-  const filtered = players.filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase()));
-
-  return (
-    <div className="border border-line/12 rounded-xl p-3 bg-line/3">
-      <input
-        value={label}
-        onChange={(e) => onLabelChange(e.target.value)}
-        className="bg-transparent border-0 border-b-2 font-display font-semibold text-[15px] pb-1.5 w-full mb-2.5 outline-none text-line"
-        style={{ borderBottomColor: accent }}
-      />
-      <div className="relative mb-2">
-        <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-line/35" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar jugador..."
-          className="w-full bg-line/6 border border-line/10 rounded-lg pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-line/35"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
-        {filtered.length === 0 ? (
-          <p className="text-line/35 text-xs text-center py-3">Sin resultados</p>
-        ) : (
-          filtered.map((p) => {
-            const active = selected.includes(p.id);
-            return (
-              <button
-                type="button"
-                key={p.id}
-                onClick={() => onToggle(p.id)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm"
-                style={{
-                  background: active ? `${accent}22` : "transparent",
-                  color: active ? "#F5F1E8" : "rgba(245,241,232,0.55)",
-                  fontWeight: active ? 600 : 500,
-                }}
-              >
-                <Avatar name={p.name} photoUrl={p.photoUrl} size={24} ring={active ? accent : null} />
-                {p.name}
-              </button>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
+type Assignment = "A" | "B" | "ausente";
 
 export function CargarPartido({ players, onSave }: Props) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [teamAName, setTeamAName] = useState("Equipo A");
   const [teamBName, setTeamBName] = useState("Equipo B");
-  const [teamA, setTeamA] = useState<string[]>([]);
-  const [teamB, setTeamB] = useState<string[]>([]);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [tags, setTags] = useState<Record<string, boolean>>({});
-  
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState("");
+
+  // Una sola fuente de verdad: cada jugador tiene A, B, ausente, o nada (sin asignar todavía)
+  const [assignment, setAssignment] = useState<Record<string, Assignment>>({});
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggle = (list: string[], setList: (v: string[]) => void, other: string[], id: string) => {
-    if (list.includes(id)) {
-      setList(list.filter((x) => x !== id));
-      return;
-    }
-    if (other.includes(id)) return;
-    
-    setList([...list, id]);
-    setAttendance((prev) => ({ ...prev, [id]: true }));
+  const setPlayerAssignment = (id: string, value: Assignment) => {
+    setAssignment((prev) => ({
+      ...prev,
+      // Tocar la misma opción de nuevo la desmarca (vuelve a "sin asignar")
+      [id]: prev[id] === value ? undefined : value,
+    }) as Record<string, Assignment>);
   };
 
   const toggleTag = (id: string) => setTags((t) => ({ ...t, [id]: !t[id] }));
-  
-  const toggleAttendance = (id: string) => {
-    setAttendance((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }));
-  };
+
+  const teamA = players.filter((p) => assignment[p.id] === "A").map((p) => p.id);
+  const teamB = players.filter((p) => assignment[p.id] === "B").map((p) => p.id);
+  const ausentes = players.filter((p) => assignment[p.id] === "ausente").map((p) => p.id);
 
   const canSave = Boolean(date && teamA.length > 0 && teamB.length > 0 && scoreA !== "" && scoreB !== "");
-
-  const allSelected = [...teamA, ...teamB];
 
   const submit = async () => {
     if (!canSave) return;
@@ -111,21 +53,27 @@ export function CargarPartido({ players, onSave }: Props) {
         teamBName: teamBName.trim() || "Equipo B",
         scoreA: Number(scoreA),
         scoreB: Number(scoreB),
-        teamA: teamA.map((id) => ({ 
-          playerId: id, 
-          hasSpecialTag: Boolean(tags[id])
-        })),
-        teamB: teamB.map((id) => ({ 
-          playerId: id, 
-          hasSpecialTag: Boolean(tags[id])
-        })),
-        // Array de asistencia independiente con el formato requerido
-        attendance: allSelected.map((id) => ({
+        teamA: teamA.map((id) => ({
           playerId: id,
-          asistio: attendance[id] !== false
-        }))
+          hasSpecialTag: Boolean(tags[id]),
+        })),
+        teamB: teamB.map((id) => ({
+          playerId: id,
+          hasSpecialTag: Boolean(tags[id]),
+        })),
+        // Los que jugaron cuentan como asistieron. Los ausentes van acá
+        // con asistio: false, SIN estar en ningun equipo.
+        attendance: [
+          ...teamA.map((id) => ({ playerId: id, asistio: true })),
+          ...teamB.map((id) => ({ playerId: id, asistio: true })),
+          ...ausentes.map((id) => ({ playerId: id, asistio: false })),
+        ],
       });
-      setTeamA([]); setTeamB([]); setScoreA(""); setScoreB(""); setTags({}); setAttendance({});
+      setScoreA("");
+      setScoreB("");
+      setTags({});
+      setAssignment({});
+      setSearch("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar el partido");
     } finally {
@@ -142,6 +90,10 @@ export function CargarPartido({ players, onSave }: Props) {
     );
   }
 
+  const filtered = players.filter((p) =>
+    p.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   return (
     <section>
       <SectionTitle eyebrow="Nuevo partido" title="Cargar resultado" />
@@ -153,8 +105,18 @@ export function CargarPartido({ players, onSave }: Props) {
       />
 
       <div className="grid grid-cols-2 gap-3.5 mb-4">
-        <TeamPicker label={teamAName} onLabelChange={setTeamAName} players={players} selected={teamA} onToggle={(id) => toggle(teamA, setTeamA, teamB, id)} accent="#2ECC71" />
-        <TeamPicker label={teamBName} onLabelChange={setTeamBName} players={players} selected={teamB} onToggle={(id) => toggle(teamB, setTeamB, teamA, id)} accent="#3498DB" />
+        <input
+          value={teamAName}
+          onChange={(e) => setTeamAName(e.target.value)}
+          className="bg-transparent border-0 border-b-2 font-display font-semibold text-[15px] pb-1.5 w-full outline-none text-line"
+          style={{ borderBottomColor: "#2ECC71" }}
+        />
+        <input
+          value={teamBName}
+          onChange={(e) => setTeamBName(e.target.value)}
+          className="bg-transparent border-0 border-b-2 font-display font-semibold text-[15px] pb-1.5 w-full outline-none text-line"
+          style={{ borderBottomColor: "#3498DB" }}
+        />
       </div>
 
       <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">Resultado</label>
@@ -166,48 +128,87 @@ export function CargarPartido({ players, onSave }: Props) {
           className="w-[70px] text-center font-mono text-lg bg-line/6 border border-line/15 rounded-lg px-3 py-2.5 text-line outline-none" />
       </div>
 
-      {allSelected.length > 0 && (
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">
-            Control de Asistencia (¿Quiénes fueron a jugar?)
-          </label>
-          <div className="flex flex-col gap-2 bg-line/3 border border-line/10 rounded-xl p-3">
-            {allSelected.map((id) => {
-              const p = players.find((x) => x.id === id);
-              if (!p) return null;
-              const asistio = attendance[id] !== false;
+      <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">
+        Jugadores — marcá equipo o ausente
+      </label>
 
-              return (
-                <div key={id} className="flex items-center justify-between py-1 px-2 rounded-lg bg-line/5">
-                  <div className="flex items-center gap-2">
-                    <Avatar name={p.name} photoUrl={p.photoUrl} size={24} />
-                    <span className="text-xs font-bold text-line/80">{p.name}</span>
-                  </div>
+      <div className="relative mb-2">
+        <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-line/35" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar jugador..."
+          className="w-full bg-line/6 border border-line/10 rounded-lg pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-line/35"
+        />
+      </div>
 
+      <div className="flex flex-col gap-1.5 max-h-96 overflow-y-auto mb-5 border border-line/10 rounded-xl p-2 bg-line/3">
+        {filtered.length === 0 ? (
+          <p className="text-line/35 text-xs text-center py-3">Sin resultados</p>
+        ) : (
+          filtered.map((p) => {
+            const current = assignment[p.id];
+            return (
+              <div key={p.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-line/5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar
+                    name={p.name}
+                    photoUrl={p.photoUrl}
+                    size={26}
+                    ring={current === "A" ? "#2ECC71" : current === "B" ? "#3498DB" : current === "ausente" ? "#E74C3C" : null}
+                  />
+                  <span className="text-sm font-semibold truncate">{p.name}</span>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
-                    onClick={() => toggleAttendance(id)}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                      asistio 
-                        ? "bg-win/15 text-win-soft border border-win/30" 
-                        : "bg-loss/15 text-loss-soft border border-loss/30"
-                    }`}
+                    onClick={() => setPlayerAssignment(p.id, "A")}
+                    className="px-2.5 py-1 rounded-md text-[11px] font-bold border transition-colors"
+                    style={{
+                      background: current === "A" ? "#2ECC7133" : "transparent",
+                      borderColor: current === "A" ? "#2ECC71" : "rgba(245,241,232,0.15)",
+                      color: current === "A" ? "#2ECC71" : "rgba(245,241,232,0.5)",
+                    }}
                   >
-                    {asistio ? <UserCheck size={14} /> : <UserX size={14} />}
-                    {asistio ? "Asistió (+20)" : "Faltó (-50)"}
+                    A
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayerAssignment(p.id, "B")}
+                    className="px-2.5 py-1 rounded-md text-[11px] font-bold border transition-colors"
+                    style={{
+                      background: current === "B" ? "#3498DB33" : "transparent",
+                      borderColor: current === "B" ? "#3498DB" : "rgba(245,241,232,0.15)",
+                      color: current === "B" ? "#3498DB" : "rgba(245,241,232,0.5)",
+                    }}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayerAssignment(p.id, "ausente")}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-colors"
+                    style={{
+                      background: current === "ausente" ? "#E74C3C33" : "transparent",
+                      borderColor: current === "ausente" ? "#E74C3C" : "rgba(245,241,232,0.15)",
+                      color: current === "ausente" ? "#E74C3C" : "rgba(245,241,232,0.5)",
+                    }}
+                  >
+                    <UserX size={12} /> Faltó
                   </button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              </div>
+            );
+          })
+        )}
+      </div>
 
-      {allSelected.length > 0 && (
+      {(teamA.length > 0 || teamB.length > 0) && (
         <>
           <label className="block text-xs font-semibold text-line/60 uppercase tracking-wide mb-1.5">Marcar algo especial (opcional)</label>
           <div className="flex flex-wrap gap-2 mb-5">
-            {allSelected.map((id) => {
+            {[...teamA, ...teamB].map((id) => {
               const p = players.find((x) => x.id === id);
               if (!p) return null;
               const active = Boolean(tags[id]);

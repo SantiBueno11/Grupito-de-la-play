@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, Trash2, UserX } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState, fmtDate } from "./Shared";
 import type { Match, MatchPlayer } from "../lib/types";
@@ -18,6 +18,25 @@ function TeamRoster({ list, align = "left" }: { list: MatchPlayer[]; align?: "le
           <span className={`text-xs ${mp.hasSpecialTag ? "text-fun-soft" : "text-line/60"}`}>{mp.playerName}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AusentesRoster({ list }: { list: MatchPlayer[] | undefined }) {
+  if (!list || list.length === 0) return null;
+  return (
+    <div className="mb-3 pt-3 border-t border-line/10">
+      <div className="flex items-center gap-1.5 text-[11px] font-bold text-loss-soft uppercase tracking-wide mb-2">
+        <UserX size={12} /> Faltaron
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {list.map((mp) => (
+          <div key={mp.playerId} className="flex items-center gap-1.5">
+            <Avatar name={mp.playerName} photoUrl={mp.photoUrl} size={20} />
+            <span className="text-xs text-loss-soft">{mp.playerName}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -103,6 +122,9 @@ export function Historial({ matches, onDelete }: Props) {
                         <TeamRoster list={m.teamA} />
                         <TeamRoster list={m.teamB} align="right" />
                       </div>
+
+                      <AusentesRoster list={m.ausentes ?? []} />
+
                       <button
                         onClick={() => onDelete(m.id)}
                         className="flex items-center gap-1.5 text-line/40 hover:text-loss-soft text-xs"

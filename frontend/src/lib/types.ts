@@ -21,6 +21,7 @@ export interface Match {
   scoreB: number;
   teamA: MatchPlayer[];
   teamB: MatchPlayer[];
+  ausentes: MatchPlayer[];
 }
 
 export interface RankingEntry {
