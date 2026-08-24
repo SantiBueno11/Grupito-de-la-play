@@ -3,6 +3,7 @@ export interface Player {
   name: string;
   photoUrl?: string | null;
   rating?: number | null;
+  esDelGrupo: boolean;
 }
 
 export interface MatchPlayer {

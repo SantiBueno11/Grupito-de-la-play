@@ -12,6 +12,10 @@ public class Player
     // Sistema de puntos competitivo (arrancan en 1000)
     public int Mmr { get; private set; } = 1000;
 
+    // Si es parte del grupo fijo (los 10 de siempre) o un invitado/reemplazo
+    // ocasional. Solo los del grupo entran en Clasificación y Asistencia.
+    public bool EsDelGrupo { get; private set; } = true;
+
     // Rango dinámico basado en el MMR con los rangos clásicos
     public string Rank => Mmr switch
     {
@@ -59,6 +63,11 @@ public class Player
             throw new ArgumentException("El nivel tiene que ser entre 1 y 5.", nameof(rating));
 
         Rating = rating;
+    }
+
+    public void SetEsDelGrupo(bool esDelGrupo)
+    {
+        EsDelGrupo = esDelGrupo;
     }
 
     // Método para actualizar los puntos después de un partido

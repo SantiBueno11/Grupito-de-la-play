@@ -15,20 +15,14 @@ public class GetMmrQueryHandler(IApplicationDbContext context)
         // Lee directamente el Mmr persistido (el que sí contempla
         // asistencias/penalizaciones vía RecalculateMmrCommandHandler),
         // en vez de recalcular un Elo aparte en memoria como hacia antes.
+        // Solo los jugadores "del grupo" (EsDelGrupo = true) entran acá:
+        // los invitados/reemplazos ocasionales no compiten en la tabla.
 
-        // Nota: p.Rank es una propiedad C# calculada (switch sobre Mmr),
-        // no una columna real, asi que no se puede traducir a SQL. Por
-        // eso materializamos los jugadores primero y armamos el DTO en
-        // memoria.
         var players = await context.Players
             .AsNoTracking()
+            .Where(p => p.EsDelGrupo)
             .ToListAsync(cancellationToken);
 
-        // "Partidos jugados" = veces que el jugador asistio. Contamos
-        // directo sobre MatchPlayers (GroupBy) en vez de usar la
-        // navegacion Player.MatchPlayers: es una query mas simple y
-        // evita cualquier problema de materializacion de la coleccion
-        // (backing field privado) combinado con AsNoTracking.
         var gamesPlayedByPlayer = await context.MatchPlayers
             .Where(mp => mp.Asistio)
             .GroupBy(mp => mp.PlayerId)
@@ -40,7 +34,7 @@ public class GetMmrQueryHandler(IApplicationDbContext context)
                 p.Id,
                 p.Name,
                 p.PhotoUrl,
-                p.Rank, // Rank ya viene calculado desde la entidad Player
+                p.Rank,
                 p.Mmr,
                 gamesPlayedByPlayer.TryGetValue(p.Id, out var count) ? count : 0
             ))

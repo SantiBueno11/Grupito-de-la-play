@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import {Camera,Check,Pencil,Plus,Trash2,X,} from "lucide-react";
+import {Camera,Check,Pencil,Plus,Trash2,X,Users,UserPlus,} from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
@@ -20,6 +20,10 @@ interface Props {
   onUpdateRating: (
     id: string,
     rating: number | null,
+  ) => Promise<void>;
+  onUpdateEsDelGrupo: (
+    id: string,
+    esDelGrupo: boolean,
   ) => Promise<void>;
 }
 
@@ -280,6 +284,33 @@ function NumberRating({
   );
 }
 
+function EsDelGrupoBadge({
+  player,
+  onUpdateEsDelGrupo,
+}: {
+  player: Player;
+  onUpdateEsDelGrupo: Props["onUpdateEsDelGrupo"];
+}) {
+  const isDelGrupo = player.esDelGrupo;
+
+  return (
+    <button
+      type="button"
+      onClick={() => void onUpdateEsDelGrupo(player.id, !isDelGrupo)}
+      className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors"
+      style={{
+        borderColor: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.15)",
+        background: isDelGrupo ? "rgba(212,160,23,0.15)" : "transparent",
+        color: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.4)",
+      }}
+      title={isDelGrupo ? "Es del grupo — tocá para marcarlo como invitado" : "Invitado — tocá para sumarlo al grupo"}
+    >
+      {isDelGrupo ? <Users size={11} /> : <UserPlus size={11} />}
+      {isDelGrupo ? "Grupo" : "Invitado"}
+    </button>
+  );
+}
+
 export function Plantel({
   players,
   onCreate,
@@ -287,6 +318,7 @@ export function Plantel({
   onUpdatePhoto,
   onUpdateName,
   onUpdateRating,
+  onUpdateEsDelGrupo,
 }: Props) {
   const [name, setName] = useState("");
   const [saving, setSaving] =
@@ -384,10 +416,16 @@ export function Plantel({
                     onUpdateName={onUpdateName}
                   />
 
-                  <NumberRating
-                    player={player}
-                    onUpdateRating={onUpdateRating}
-                  />
+                  <div className="flex items-center gap-2">
+                    <NumberRating
+                      player={player}
+                      onUpdateRating={onUpdateRating}
+                    />
+                    <EsDelGrupoBadge
+                      player={player}
+                      onUpdateEsDelGrupo={onUpdateEsDelGrupo}
+                    />
+                  </div>
                 </div>
               </div>
 

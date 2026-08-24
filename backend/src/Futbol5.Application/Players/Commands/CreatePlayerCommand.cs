@@ -25,7 +25,6 @@ public class CreatePlayerCommandHandler(IApplicationDbContext context)
         context.Players.Add(player);
         await context.SaveChangesAsync(cancellationToken);
 
-        // ACÁ ESTABA EL DETALLE: Agregamos player.Mmr y player.Rank
-        return new PlayerDto(player.Id, player.Name, player.PhotoUrl, player.Rating, player.Mmr, player.Rank);
+        return new PlayerDto(player.Id, player.Name, player.PhotoUrl, player.Rating, player.Mmr, player.Rank, player.EsDelGrupo);
     }
 }

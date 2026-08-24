@@ -7,6 +7,7 @@ namespace Futbol5.Api.Endpoints;
 public record UpdatePhotoRequest(string? PhotoUrl);
 public record UpdateNameRequest(string Name);
 public record UpdateRatingRequest(int? Rating);
+public record UpdateEsDelGrupoRequest(bool EsDelGrupo);
 
 public static class PlayersEndpoints
 {
@@ -60,6 +61,12 @@ public static class PlayersEndpoints
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        group.MapPut("/{id:guid}/es-del-grupo", async (Guid id, UpdateEsDelGrupoRequest body, IMediator mediator) =>
+        {
+            var updated = await mediator.Send(new UpdatePlayerEsDelGrupoCommand(id, body.EsDelGrupo));
+            return updated ? Results.NoContent() : Results.NotFound();
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, IMediator mediator) =>

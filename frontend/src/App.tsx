@@ -93,6 +93,11 @@ export default function App() {
     await loadAll();
   };
 
+  const updatePlayerEsDelGrupo = async (id: string, esDelGrupo: boolean) => {
+    await api.players.updateEsDelGrupo(id, esDelGrupo);
+    await loadAll();
+  };
+
   const createMatch = async (input: CreateMatchInput) => {
     await api.matches.create(input);
     await loadAll();
@@ -173,6 +178,7 @@ export default function App() {
             onUpdatePhoto={updatePlayerPhoto}
             onUpdateName={updatePlayerName}
             onUpdateRating={updatePlayerRating}
+            onUpdateEsDelGrupo={updatePlayerEsDelGrupo}
           />
         )}
       </div>

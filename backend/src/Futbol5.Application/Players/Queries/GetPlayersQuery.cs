@@ -14,8 +14,7 @@ public class GetPlayersQueryHandler(IApplicationDbContext context)
     {
         return await context.Players
             .OrderBy(p => p.Name)
-            // ACÁ ESTÁ EL CAMBIO: Invertimos p.Mmr y p.Rating
-            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating, p.Mmr, p.Rank))
+            .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating, p.Mmr, p.Rank, p.EsDelGrupo))
             .ToListAsync(cancellationToken);
     }
 }

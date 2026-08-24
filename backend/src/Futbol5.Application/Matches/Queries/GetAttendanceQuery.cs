@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Futbol5.Application.Matches.Queries;
 
 // Ojo: "asistencia" se calcula sobre el total de partidos cargados en el sistema.
-// Si un jugador se sumó al grupo después de partidos ya cargados, esos cuentan como "faltados".
+// Solo cuenta a los jugadores "del grupo" (EsDelGrupo = true); los invitados
+// ocasionales no aparecen en esta tabla.
 public record GetAttendanceQuery : IRequest<List<AttendanceEntryDto>>;
 
 public class GetAttendanceQueryHandler(IApplicationDbContext context)
@@ -17,13 +18,10 @@ public class GetAttendanceQueryHandler(IApplicationDbContext context)
         var totalMatches = await context.Matches.CountAsync(cancellationToken);
 
         var players = await context.Players
+            .Where(p => p.EsDelGrupo)
             .Select(p => new { p.Id, p.Name, p.PhotoUrl })
             .ToListAsync(cancellationToken);
 
-        // Importante: solo cuenta como "jugado" si Asistio es true.
-        // Antes contaba cualquier fila de MatchPlayers, incluyendo a los
-        // marcados como ausentes (que también generan una fila, con
-        // Asistio = false), por eso todos aparecian como que jugaron.
         var playedCounts = await context.MatchPlayers
             .Where(mp => mp.Asistio)
             .GroupBy(mp => mp.PlayerId)

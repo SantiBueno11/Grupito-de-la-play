@@ -36,6 +36,8 @@ export const api = {
       request<void>(`/api/players/${id}/name`, { method: "PUT", body: JSON.stringify({ name }) }),
     updateRating: (id: string, rating: number | null) =>
       request<void>(`/api/players/${id}/rating`, { method: "PUT", body: JSON.stringify({ rating }) }),
+    updateEsDelGrupo: (id: string, esDelGrupo: boolean) =>
+      request<void>(`/api/players/${id}/es-del-grupo`, { method: "PUT", body: JSON.stringify({ esDelGrupo }) }),
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {

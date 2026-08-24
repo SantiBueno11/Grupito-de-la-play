@@ -16,6 +16,7 @@ public class PlayerConfiguration : IEntityTypeConfiguration<Player>
         builder.Property(p => p.Name).IsRequired().HasMaxLength(100);
         builder.Property(p => p.PhotoUrl);
         builder.Property(p => p.Rating);
+        builder.Property(p => p.EsDelGrupo).HasDefaultValue(true);
         builder.HasIndex(p => p.Name).IsUnique();
     }
 }
