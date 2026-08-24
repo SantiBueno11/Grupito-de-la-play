@@ -1,9 +1,9 @@
 using Futbol5.Api.Endpoints;
 using Futbol5.Application;
-using Futbol5.Application.Matches.Commands; // Import necesario para el comando
+using Futbol5.Application.Matches.Commands;
 using Futbol5.Infrastructure;
 using Futbol5.Infrastructure.Persistence;
-using MediatR; // Import necesario para el Mediator
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
