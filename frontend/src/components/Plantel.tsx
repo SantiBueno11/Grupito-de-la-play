@@ -1,5 +1,17 @@
 import { useRef, useState } from "react";
-import { Camera, Check, Pencil, Plus, Trash2, X, Users, UserPlus, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+  Users,
+  UserPlus,
+  Trophy,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
@@ -16,7 +28,7 @@ import muroImg from "../assets/badges/muro.png";
 import rachaFuegoImg from "../assets/badges/racha_fuego.png";
 import veteranoImg from "../assets/badges/veterano.png";
 
-// Diccionario para vincular cada ID de medalla con su respectiva imagen
+// Diccionario exacto con las 8 medallas oficiales
 const badgeImages: Record<string, string> = {
   el_fiel: medallaElFielImg,
   racha_fuego: rachaFuegoImg,
@@ -26,7 +38,6 @@ const badgeImages: Record<string, string> = {
   veterano: veteranoImg,
   aplastante: aplastanteImg,
   invicto_mes: invictoDelMesImg,
-  rey_selva: rachaFuegoImg,
 };
 
 interface Props {
@@ -51,17 +62,48 @@ interface Props {
   ) => Promise<void>;
 }
 
-// Lista estática con la explicación de cada medalla para el panel lateral
+// Guía de medallas oficial (8 en total)
 const BADGE_DEFINITIONS = [
-  { id: "el_fiel", title: "El Fiel", description: "Asistir a 5 partidos seguidos sin faltar" },
-  { id: "racha_fuego", title: "Racha de Fuego", description: "Ganar 3 partidos consecutivos" },
-  { id: "el_fantasma", title: "El Fantasma", description: "Faltar a 3 convocatorias al hilo" },
-  { id: "muro", title: "El Muro", description: "Ganar un partido manteniendo la valla invicta" },
-  { id: "en_lona", title: "En la Lona", description: "Perder 3 partidos seguidos" },
-  { id: "veterano", title: "Veterano", description: "Alcanzar los 20 partidos jugados" },
-  { id: "aplastante", title: "Aplastante", description: "Ganar un partido por goleada (4+ goles de diferencia)" },
-  { id: "invicto_mes", title: "Invicto del Mes", description: "No perder ningún partido durante todo un mes" },
-  { id: "rey_selva", title: "Rey de la Selva", description: "Llegar al puesto #1 del ranking de MMR" },
+  {
+    id: "el_fiel",
+    title: "El Fiel",
+    description: "Asistir a 5 partidos seguidos sin faltar",
+  },
+  {
+    id: "racha_fuego",
+    title: "Racha de Fuego",
+    description: "Ganar 3 partidos consecutivos",
+  },
+  {
+    id: "el_fantasma",
+    title: "El Fantasma",
+    description: "Faltar a 3 convocatorias al hilo",
+  },
+  {
+    id: "muro",
+    title: "El Muro",
+    description: "Ganar un partido manteniendo la valla invicta",
+  },
+  {
+    id: "en_lona",
+    title: "En la Lona",
+    description: "Perder 3 partidos seguidos",
+  },
+  {
+    id: "veterano",
+    title: "Veterano",
+    description: "Alcanzar los 20 partidos jugados",
+  },
+  {
+    id: "aplastante",
+    title: "Aplastante",
+    description: "Ganar un partido por goleada (4+ goles de diferencia)",
+  },
+  {
+    id: "invicto_mes",
+    title: "Invicto del Mes",
+    description: "No perder ningún partido durante todo un mes",
+  },
 ];
 
 function PlayerCard({
@@ -85,12 +127,15 @@ function PlayerCard({
 
   const toggleExpand = async () => {
     const nextState = !expanded;
+
     setExpanded(nextState);
 
     if (nextState && badges.length === 0) {
       setLoadingBadges(true);
+
       try {
         const data = await api.players.badges(player.id);
+
         setBadges(data);
       } catch (err) {
         console.error("Error cargando medallas", err);
@@ -102,29 +147,36 @@ function PlayerCard({
 
   return (
     <div className="flex flex-col rounded-xl border border-line/10 bg-line/3 overflow-hidden transition-all">
+
       {/* Cabecera principal del jugador */}
       <div className="flex items-start justify-between px-3.5 py-3.5">
+
         <div className="flex items-start gap-3.5">
+
           <PlayerPhotoButton
             player={player}
             onUpdatePhoto={onUpdatePhoto}
           />
 
           <div className="flex flex-col gap-1.5">
+
             <PlayerNameField
               player={player}
               onUpdateName={onUpdateName}
             />
 
             <div className="flex flex-wrap items-center gap-2">
+
               <NumberRating
                 player={player}
                 onUpdateRating={onUpdateRating}
               />
+
               <EsDelGrupoBadge
                 player={player}
                 onUpdateEsDelGrupo={onUpdateEsDelGrupo}
               />
+
             </div>
 
             {/* Botón desplegable */}
@@ -134,9 +186,20 @@ function PlayerCard({
               className="flex items-center gap-1.5 mt-1 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors w-fit"
             >
               <Trophy size={14} />
-              <span>{expanded ? "Ocultar medallas y logros" : "Ver medallas y logros"}</span>
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+
+              <span>
+                {expanded
+                  ? "Ocultar medallas y logros"
+                  : "Ver medallas y logros"}
+              </span>
+
+              {expanded ? (
+                <ChevronUp size={14} />
+              ) : (
+                <ChevronDown size={14} />
+              )}
             </button>
+
           </div>
         </div>
 
@@ -148,64 +211,91 @@ function PlayerCard({
         >
           <Trash2 size={15} />
         </button>
+
       </div>
 
-      {/* Desplegable con logos grandes y claros */}
+      {/* Desplegable con medallas */}
       {expanded && (
         <div className="border-t border-line/10 bg-line/5 p-4 animate-fadeIn">
+
           <h4 className="text-xs font-bold uppercase tracking-wider text-line/60 mb-3">
             Vitrina de Logros de {player.name}
           </h4>
 
           {loadingBadges ? (
-            <p className="text-xs text-line/40 py-4 text-center">Cargando medallas...</p>
+
+            <p className="text-xs text-line/40 py-4 text-center">
+              Cargando medallas...
+            </p>
+
           ) : badges.length === 0 ? (
-            <p className="text-xs text-line/40 py-4 text-center">No hay medallas disponibles.</p>
+
+            <p className="text-xs text-line/40 py-4 text-center">
+              No hay medallas disponibles.
+            </p>
+
           ) : (
+
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+
               {badges.map((badge) => {
+
                 const imgSrc = badgeImages[badge.id];
 
                 return (
                   <div
                     key={badge.id}
-                    className={`flex flex-col items-center justify-between p-3.5 rounded-xl border text-center transition-all ${
+                    className={`flex flex-col items-center justify-between h-[210px] p-3.5 rounded-xl border text-center transition-all ${
                       badge.unlocked
                         ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-md"
                         : "bg-line/3 border-line/10 text-line/30 grayscale opacity-40"
                     }`}
                     title={`${badge.title}: ${badge.description}`}
                   >
-                    {/* Logo grande y responsivo: más chico en mobile, crece en pantallas más anchas */}
-<div className="my-1 flex items-center justify-center h-16 sm:h-20 xl:h-24">
-  {imgSrc ? (
-    <img
-      src={imgSrc}
-      alt={badge.title}
-      className="w-16 h-16 sm:w-20 sm:h-20 xl:w-30 xl:h-30 object-contain drop-shadow-xl"
-    />
-  ) : (
-    <span className="text-4xl sm:text-5xl xl:text-6xl">🏆</span>
-  )}
-</div>
-                    
-                    <div className="flex flex-col items-center w-full mt-1">
-                      <span className="text-xs font-bold text-amber-300 line-clamp-1 mb-1.5">
-                        {badge.title}
-                      </span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                        badge.unlocked ? "bg-amber-500 text-pitch-ink" : "bg-line/10 text-line/40"
-                      }`}>
-                        {badge.unlocked ? "Desbloqueado" : "Bloqueado"}
+
+                    {/* ÁREA DE LA MEDALLA */}
+                    <div className="flex items-center justify-center w-full h-[140px] overflow-visible">
+
+                      {imgSrc ? (
+
+                        <img
+                          src={imgSrc}
+                          alt={badge.title}
+                          className="w-full h-full object-contain scale-[3.5] drop-shadow-xl"
+                        />
+                      ) : (
+                        <span className="text-7xl">
+                          🏆
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Estado de la medalla */}
+                    <div className="flex flex-col items-center w-full mt-2">
+                      <span
+                        className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
+                          badge.unlocked
+                            ? "bg-amber-500 text-pitch-ink"
+                            : "bg-line/10 text-line/40"
+                        }`}
+                      >
+                        {badge.unlocked
+                          ? "Desbloqueado"
+                          : "Bloqueado"}
                       </span>
                     </div>
+
                   </div>
                 );
               })}
+
             </div>
+
           )}
+
         </div>
       )}
+
     </div>
   );
 }
@@ -228,6 +318,7 @@ function PlayerPhotoButton({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
+
     event.target.value = "";
 
     if (!file) {
@@ -238,7 +329,11 @@ function PlayerPhotoButton({
 
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
-      await onUpdatePhoto(player.id, dataUrl);
+
+      await onUpdatePhoto(
+        player.id,
+        dataUrl,
+      );
     } finally {
       setUploading(false);
     }
@@ -252,6 +347,7 @@ function PlayerPhotoButton({
       title="Cambiar foto"
       disabled={uploading}
     >
+
       <Avatar
         name={player.name}
         photoUrl={player.photoUrl}
@@ -264,10 +360,12 @@ function PlayerPhotoButton({
           borderColor: "#0F2419",
         }}
       >
+
         <Camera
           size={11}
           color="#0F2419"
         />
+
       </span>
 
       {uploading && (
@@ -283,6 +381,7 @@ function PlayerPhotoButton({
         className="hidden"
         onChange={onChange}
       />
+
     </button>
   );
 }
@@ -322,7 +421,11 @@ function PlayerNameField({
     setError(null);
 
     try {
-      await onUpdateName(player.id, trimmed);
+      await onUpdateName(
+        player.id,
+        trimmed,
+      );
+
       setEditing(false);
     } catch (errorValue) {
       setError(
@@ -338,7 +441,9 @@ function PlayerNameField({
   if (editing) {
     return (
       <div className="flex flex-col gap-1">
+
         <div className="flex items-center gap-1.5">
+
           <input
             autoFocus
             value={value}
@@ -346,6 +451,7 @@ function PlayerNameField({
               setValue(event.target.value)
             }
             onKeyDown={(event) => {
+
               if (event.key === "Enter") {
                 void save();
               }
@@ -353,6 +459,7 @@ function PlayerNameField({
               if (event.key === "Escape") {
                 cancel();
               }
+
             }}
             className="w-40 rounded-lg border border-gold/50 bg-line/6 px-2 py-1 text-sm font-semibold outline-none"
           />
@@ -376,6 +483,7 @@ function PlayerNameField({
           >
             <X size={16} />
           </button>
+
         </div>
 
         {error && (
@@ -383,6 +491,7 @@ function PlayerNameField({
             {error}
           </p>
         )}
+
       </div>
     );
   }
@@ -393,6 +502,7 @@ function PlayerNameField({
       onClick={startEdit}
       className="group flex items-center gap-1.5"
     >
+
       <span className="font-semibold">
         {player.name}
       </span>
@@ -401,6 +511,7 @@ function PlayerNameField({
         size={13}
         className="text-line/30 group-hover:text-line/60"
       />
+
     </button>
   );
 }
@@ -413,19 +524,25 @@ function NumberRating({
   onUpdateRating: Props["onUpdateRating"];
 }) {
   const click = (rating: number) => {
+
     onUpdateRating(
       player.id,
-      player.rating === rating ? null : rating,
+      player.rating === rating
+        ? null
+        : rating,
     );
+
   };
 
   return (
     <div className="flex items-center gap-1">
+
       <span className="mr-0.5 text-[10px] uppercase tracking-wide text-line/40">
         Nivel
       </span>
 
       {[1, 2, 3, 4, 5].map((rating) => {
+
         const active = player.rating === rating;
 
         return (
@@ -438,9 +555,11 @@ function NumberRating({
               borderColor: active
                 ? "#D4A017"
                 : "rgba(245,241,232,0.15)",
+
               background: active
                 ? "#D4A017"
                 : "transparent",
+
               color: active
                 ? "#0F2419"
                 : "rgba(245,241,232,0.5)",
@@ -449,7 +568,9 @@ function NumberRating({
             {rating}
           </button>
         );
+
       })}
+
     </div>
   );
 }
@@ -466,17 +587,43 @@ function EsDelGrupoBadge({
   return (
     <button
       type="button"
-      onClick={() => void onUpdateEsDelGrupo(player.id, !isDelGrupo)}
+      onClick={() =>
+        void onUpdateEsDelGrupo(
+          player.id,
+          !isDelGrupo,
+        )
+      }
       className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors"
       style={{
-        borderColor: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.15)",
-        background: isDelGrupo ? "rgba(212,160,23,0.15)" : "transparent",
-        color: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.4)",
+        borderColor: isDelGrupo
+          ? "#D4A017"
+          : "rgba(245,241,232,0.15)",
+
+        background: isDelGrupo
+          ? "rgba(212,160,23,0.15)"
+          : "transparent",
+
+        color: isDelGrupo
+          ? "#D4A017"
+          : "rgba(245,241,232,0.4)",
       }}
-      title={isDelGrupo ? "Es del grupo — tocá para marcarlo como invitado" : "Invitado — tocá para sumarlo al grupo"}
+      title={
+        isDelGrupo
+          ? "Es del grupo — tocá para marcarlo como invitado"
+          : "Invitado — tocá para sumarlo al grupo"
+      }
     >
-      {isDelGrupo ? <Users size={11} /> : <UserPlus size={11} />}
-      {isDelGrupo ? "Grupo" : "Invitado"}
+
+      {isDelGrupo ? (
+        <Users size={11} />
+      ) : (
+        <UserPlus size={11} />
+      )}
+
+      {isDelGrupo
+        ? "Grupo"
+        : "Invitado"}
+
     </button>
   );
 }
@@ -490,11 +637,13 @@ export function Plantel({
   onUpdateRating,
   onUpdateEsDelGrupo,
 }: Props) {
+
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const add = async () => {
+
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -505,41 +654,53 @@ export function Plantel({
     setError(null);
 
     try {
+
       await onCreate(trimmedName);
+
       setName("");
+
     } catch (errorValue) {
+
       setError(
         errorValue instanceof Error
           ? errorValue.message
           : "No se pudo agregar el jugador",
       );
+
     } finally {
+
       setSaving(false);
+
     }
   };
 
   return (
     <section>
+
       <SectionTitle
         eyebrow="Plantel"
         title="Tus jugadores y logros"
       />
 
-      {/* DISEÑO EN 2 COLUMNAS: Izquierda Plantel / Derecha Guía de Medallas */}
+      {/* DISEÑO EN 2 COLUMNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
-        
-        {/* COLUMNA IZQUIERDA: Jugadores (Ocupa 2 espacios) */}
+
+        {/* COLUMNA IZQUIERDA: Jugadores */}
         <div className="lg:col-span-2 flex flex-col gap-4">
+
           <div className="flex gap-2">
+
             <input
               value={name}
               onChange={(event) =>
                 setName(event.target.value)
               }
               onKeyDown={(event) => {
+
                 if (event.key === "Enter") {
                   void add();
                 }
+
               }}
               placeholder="Nombre del jugador"
               className="flex-1 rounded-lg border border-line/15 bg-line/6 px-3 py-2.5 text-sm text-line outline-none placeholder:text-line/40"
@@ -551,9 +712,13 @@ export function Plantel({
               disabled={saving}
               className="flex items-center gap-1.5 rounded-lg bg-win px-4 py-2.5 text-sm font-bold text-pitch-ink disabled:opacity-50"
             >
+
               <Plus size={16} />
+
               Agregar
+
             </button>
+
           </div>
 
           {error && (
@@ -567,10 +732,17 @@ export function Plantel({
           </p>
 
           {players.length === 0 ? (
-            <EmptyState text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos." />
+
+            <EmptyState
+              text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos."
+            />
+
           ) : (
+
             <div className="flex flex-col gap-2">
+
               {players.map((player) => (
+
                 <PlayerCard
                   key={player.id}
                   player={player}
@@ -580,25 +752,41 @@ export function Plantel({
                   onUpdateRating={onUpdateRating}
                   onUpdateEsDelGrupo={onUpdateEsDelGrupo}
                 />
+
               ))}
+
             </div>
+
           )}
+
         </div>
 
-        {/* COLUMNA DERECHA: Guía de Medallas / Logros (Ocupa 1 espacio) */}
+        {/* COLUMNA DERECHA: Guía de Medallas */}
         <div className="lg:col-span-1">
+
           <div className="sticky top-4 rounded-xl border border-line/10 bg-line/3 p-4 flex flex-col gap-3">
+
             <div className="flex items-center gap-2 border-b border-line/10 pb-2.5">
-              <Trophy size={18} className="text-amber-400" />
-              <h3 className="font-bold text-sm text-line">Guía de Medallas</h3>
+
+              <Trophy
+                size={18}
+                className="text-amber-400"
+              />
+
+              <h3 className="font-bold text-sm text-line">
+                Guía de Medallas
+              </h3>
+
             </div>
-            
+
             <p className="text-xs text-line/60 leading-relaxed">
               Cada jugador puede desbloquear estos logros automáticamente según su rendimiento en los partidos:
             </p>
 
             <div className="flex flex-col gap-2.5 mt-1">
+
               {BADGE_DEFINITIONS.map((badge) => {
+
                 const imgSrc = badgeImages[badge.id];
 
                 return (
@@ -606,27 +794,48 @@ export function Plantel({
                     key={badge.id}
                     className="flex items-center gap-3 p-2.5 rounded-lg border border-line/10 bg-line/5"
                   >
+
                     {imgSrc ? (
-                      <img src={imgSrc} alt={badge.title} className="w-7 h-7 object-contain shrink-0" />
+
+                      <img
+                        src={imgSrc}
+                        alt={badge.title}
+                        className="w-7 h-7 object-contain shrink-0"
+                      />
+
                     ) : (
-                      <span className="text-xl shrink-0">🏆</span>
+
+                      <span className="text-xl shrink-0">
+                        🏆
+                      </span>
+
                     )}
+
                     <div className="flex flex-col">
+
                       <span className="text-xs font-bold text-amber-300">
                         {badge.title}
                       </span>
+
                       <span className="text-[11px] text-line/60 leading-tight">
                         {badge.description}
                       </span>
+
                     </div>
+
                   </div>
                 );
+
               })}
+
             </div>
+
           </div>
+
         </div>
 
       </div>
+
     </section>
   );
 }

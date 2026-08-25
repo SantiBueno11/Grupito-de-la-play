@@ -27,14 +27,12 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
 
         var totalMatches = matchesPlayed.Count;
 
-        // Obtener todos los partidos del sistema ordenados por fecha para calcular asistencia y ausencias
         var allMatches = await context.Matches
             .OrderBy(m => m.Date)
             .ToListAsync(cancellationToken);
 
         var playerMatchIds = new HashSet<Guid>(matchesPlayed.Select(mp => mp.MatchId));
 
-        // Calcular El Fiel (5 partidos seguidos sin faltar) y El Fantasma (faltar a 3 convocatorias al hilo)
         int maxAttendanceStreak = 0;
         int currentAttendanceStreak = 0;
         int maxAbsenceStreak = 0;
@@ -62,19 +60,6 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
             }
         }
 
-        // Calcular MMR ranking (Rey de la selva)
-        Guid? topPlayerId = null;
-        try
-        {
-            topPlayerId = await context.Players
-                .OrderByDescending(p => p.Mmr)
-                .Select(p => (Guid?)p.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-        catch { }
-
-        bool isKing = topPlayerId.HasValue && topPlayerId.Value == player.Id;
-
         int maxWinStreak = 0;
         int currentWinStreak = 0;
         int maxLossStreak = 0;
@@ -82,7 +67,6 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
         bool hasCleanSheetWin = false;
         bool hasCrushingWin = false;
 
-        // Diccionario para Invicto del Mes
         var monthlyMatchesCount = new Dictionary<(int Year, int Month), int>();
         var monthlyLossesCount = new Dictionary<(int Year, int Month), int>();
 
@@ -133,7 +117,6 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
             }
         }
 
-        // Invicto del Mes: al menos un mes con >= 1 partido jugado y 0 derrotas
         bool hasUndefeatedMonth = false;
         foreach (var kvp in monthlyMatchesCount)
         {
@@ -154,8 +137,7 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
             new("en_lona", "En la Lona", "Perder 3 partidos seguidos", "📉", maxLossStreak >= 3),
             new("veterano", "Veterano", "Alcanzar los 20 partidos jugados", "🪖", totalMatches >= 20),
             new("aplastante", "Aplastante", "Ganar un partido por goleada (4+ goles de diferencia)", "💥", hasCrushingWin),
-            new("invicto_mes", "Invicto del Mes", "No perder ningún partido durante todo un mes", "🛡️", hasUndefeatedMonth),
-            new("rey_selva", "Rey de la Selva", "Llegar al puesto #1 del ranking de MMR", "🦁", isKing)
+            new("invicto_mes", "Invicto del Mes", "No perder ningún partido durante todo un mes", "🛡️", hasUndefeatedMonth)
         };
 
         return badges;
