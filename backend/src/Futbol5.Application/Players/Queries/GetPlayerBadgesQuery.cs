@@ -20,54 +20,110 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
 
         if (player == null) throw new InvalidOperationException("Jugador no encontrado.");
 
-        // Ordenar partidos cronológicamente (del más antiguo al más reciente) 
-        // para evaluar bien la secuencia de la racha.
-        var matchesPlayed = player.MatchPlayers
-            .Where(mp => mp.Match != null)
-            .OrderBy(mp => mp.Match.Date)
-            .ToList();
+        var matchesPlayed = player.MatchPlayers?
+            .Where(mp => mp != null && mp.Match != null)
+            .OrderBy(mp => mp.Match!.Date)
+            .ToList() ?? new();
 
         var totalMatches = matchesPlayed.Count;
 
-        // Calcular MMR ranking (Rey de la selva)
-        var topPlayerId = await context.Players
-            .OrderByDescending(p => p.Mmr)
-            .Select(p => p.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        // Obtener todos los partidos del sistema ordenados por fecha para calcular asistencia y ausencias
+        var allMatches = await context.Matches
+            .OrderBy(m => m.Date)
+            .ToListAsync(cancellationToken);
 
-        bool isKing = topPlayerId == player.Id;
+        var playerMatchIds = new HashSet<Guid>(matchesPlayed.Select(mp => mp.MatchId));
+
+        // Calcular El Fiel (5 partidos seguidos sin faltar) y El Fantasma (faltar a 3 convocatorias al hilo)
+        int maxAttendanceStreak = 0;
+        int currentAttendanceStreak = 0;
+        int maxAbsenceStreak = 0;
+        int currentAbsenceStreak = 0;
+        bool hasStartedPlaying = false;
+
+        foreach (var m in allMatches)
+        {
+            bool attended = playerMatchIds.Contains(m.Id);
+            if (attended)
+            {
+                hasStartedPlaying = true;
+                currentAttendanceStreak++;
+                if (currentAttendanceStreak > maxAttendanceStreak) maxAttendanceStreak = currentAttendanceStreak;
+                currentAbsenceStreak = 0;
+            }
+            else
+            {
+                if (hasStartedPlaying)
+                {
+                    currentAbsenceStreak++;
+                    if (currentAbsenceStreak > maxAbsenceStreak) maxAbsenceStreak = currentAbsenceStreak;
+                }
+                currentAttendanceStreak = 0;
+            }
+        }
+
+        // Calcular MMR ranking (Rey de la selva)
+        Guid? topPlayerId = null;
+        try
+        {
+            topPlayerId = await context.Players
+                .OrderByDescending(p => p.Mmr)
+                .Select(p => (Guid?)p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        catch { }
+
+        bool isKing = topPlayerId.HasValue && topPlayerId.Value == player.Id;
 
         int maxWinStreak = 0;
         int currentWinStreak = 0;
+        int maxLossStreak = 0;
         int currentLossStreak = 0;
         bool hasCleanSheetWin = false;
         bool hasCrushingWin = false;
+
+        // Diccionario para Invicto del Mes
+        var monthlyMatchesCount = new Dictionary<(int Year, int Month), int>();
+        var monthlyLossesCount = new Dictionary<(int Year, int Month), int>();
 
         foreach (var mp in matchesPlayed)
         {
             var match = mp.Match;
             if (match == null) continue;
 
-            bool isTeamA = mp.Team.ToString() == "A"; 
+            string teamStr = mp.Team.ToString();
+            bool isTeamA = teamStr.Equals("A", StringComparison.OrdinalIgnoreCase);
+
             int playerScore = isTeamA ? match.ScoreA : match.ScoreB;
             int rivalScore = isTeamA ? match.ScoreB : match.ScoreA;
 
             bool won = playerScore > rivalScore;
             bool lost = playerScore < rivalScore;
 
+            var monthKey = (match.Date.Year, match.Date.Month);
+            if (!monthlyMatchesCount.ContainsKey(monthKey))
+            {
+                monthlyMatchesCount[monthKey] = 0;
+                monthlyLossesCount[monthKey] = 0;
+            }
+            monthlyMatchesCount[monthKey]++;
+            if (lost)
+            {
+                monthlyLossesCount[monthKey]++;
+            }
+
             if (won)
             {
                 currentWinStreak++;
                 if (currentWinStreak > maxWinStreak) maxWinStreak = currentWinStreak;
-
                 if (rivalScore == 0) hasCleanSheetWin = true;
                 if ((playerScore - rivalScore) >= 4) hasCrushingWin = true;
-                
                 currentLossStreak = 0;
             }
             else if (lost)
             {
                 currentLossStreak++;
+                if (currentLossStreak > maxLossStreak) maxLossStreak = currentLossStreak;
                 currentWinStreak = 0;
             }
             else
@@ -77,14 +133,29 @@ public class GetPlayerBadgesQueryHandler(IApplicationDbContext context)
             }
         }
 
+        // Invicto del Mes: al menos un mes con >= 1 partido jugado y 0 derrotas
+        bool hasUndefeatedMonth = false;
+        foreach (var kvp in monthlyMatchesCount)
+        {
+            var key = kvp.Key;
+            if (monthlyMatchesCount[key] > 0 && monthlyLossesCount[key] == 0)
+            {
+                hasUndefeatedMonth = true;
+                break;
+            }
+        }
+
         var badges = new List<BadgeDto>
         {
+            new("el_fiel", "El Fiel", "Asistir a 5 partidos seguidos sin faltar", "⏰", maxAttendanceStreak >= 5),
             new("racha_fuego", "Racha de Fuego", "Ganar 3 partidos consecutivos", "🔥", maxWinStreak >= 3),
-            new("veterano", "Veterano", "Alcanzar los 20 partidos jugados", "🪖", totalMatches >= 20),
-            new("rey_selva", "Rey de la Selva", "Llegar al puesto #1 del ranking de MMR", "🦁", isKing),
+            new("el_fantasma", "El Fantasma", "Faltar a 3 convocatorias al hilo", "👻", maxAbsenceStreak >= 3),
             new("muro", "El Muro", "Ganar un partido manteniendo la valla invicta", "🧱", hasCleanSheetWin),
-            new("aplastante", "Aplastante", "Ganar un partido por 4+ goles de diferencia", "💥", hasCrushingWin),
-            new("en_lona", "En la Lona", "Perder 3 partidos seguidos", "📉", currentLossStreak >= 3)
+            new("en_lona", "En la Lona", "Perder 3 partidos seguidos", "📉", maxLossStreak >= 3),
+            new("veterano", "Veterano", "Alcanzar los 20 partidos jugados", "🪖", totalMatches >= 20),
+            new("aplastante", "Aplastante", "Ganar un partido por goleada (4+ goles de diferencia)", "💥", hasCrushingWin),
+            new("invicto_mes", "Invicto del Mes", "No perder ningún partido durante todo un mes", "🛡️", hasUndefeatedMonth),
+            new("rey_selva", "Rey de la Selva", "Llegar al puesto #1 del ranking de MMR", "🦁", isKing)
         };
 
         return badges;
