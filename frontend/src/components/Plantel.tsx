@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
-import {Camera,Check,Pencil,Plus,Trash2,X,Users,UserPlus,} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Check, Pencil, Plus, Trash2, X, Users, UserPlus } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
-import type { Player } from "../lib/types";
-
+import type { Badge, Player } from "../lib/types";
+import { api } from "../lib/api";
 interface Props {
   players: Player[];
   onCreate: (name: string) => Promise<void>;
@@ -27,6 +27,41 @@ interface Props {
   ) => Promise<void>;
 }
 
+function PlayerBadges({ playerId }: { playerId: string }) {
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.players.badges(playerId)
+      .then((data: Badge[]) => setBadges(data))
+      .catch((err: unknown) => console.error("Error cargando medallas", err))
+      .finally(() => setLoading(false));
+  }, [playerId]);
+
+  if (loading) {
+    return <span className="text-[10px] text-line/40">Cargando logros...</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      {badges.map((badge) => (
+        <div
+          key={badge.id}
+          className={`px-2 py-0.5 rounded border text-[10px] flex items-center gap-1 transition-all ${
+            badge.unlocked
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-sm"
+              : "bg-line/3 border-line/10 text-line/25 grayscale opacity-30"
+          }`}
+          title={`${badge.title}: ${badge.description}`}
+        >
+          <span>{badge.icon}</span>
+          <span className="font-semibold">{badge.title}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PlayerPhotoButton({
   player,
   onUpdatePhoto,
@@ -34,11 +69,8 @@ function PlayerPhotoButton({
   player: Player;
   onUpdatePhoto: Props["onUpdatePhoto"];
 }) {
-  const inputRef =
-    useRef<HTMLInputElement>(null);
-
-  const [uploading, setUploading] =
-    useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const pick = () => {
     inputRef.current?.click();
@@ -48,7 +80,6 @@ function PlayerPhotoButton({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-
     event.target.value = "";
 
     if (!file) {
@@ -58,9 +89,7 @@ function PlayerPhotoButton({
     setUploading(true);
 
     try {
-      const dataUrl =
-        await fileToCompressedDataUrl(file);
-
+      const dataUrl = await fileToCompressedDataUrl(file);
       await onUpdatePhoto(player.id, dataUrl);
     } finally {
       setUploading(false);
@@ -117,17 +146,10 @@ function PlayerNameField({
   player: Player;
   onUpdateName: Props["onUpdateName"];
 }) {
-  const [editing, setEditing] =
-    useState(false);
-
-  const [value, setValue] =
-    useState(player.name);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(player.name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startEdit = () => {
     setValue(player.name);
@@ -321,11 +343,8 @@ export function Plantel({
   onUpdateEsDelGrupo,
 }: Props) {
   const [name, setName] = useState("");
-  const [saving, setSaving] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const add = async () => {
     const trimmedName = name.trim();
@@ -402,9 +421,9 @@ export function Plantel({
           {players.map((player) => (
             <div
               key={player.id}
-              className="flex items-center justify-between rounded-xl border border-line/10 bg-line/3 px-3.5 py-2.5"
+              className="flex items-start justify-between rounded-xl border border-line/10 bg-line/3 px-3.5 py-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <PlayerPhotoButton
                   player={player}
                   onUpdatePhoto={onUpdatePhoto}
@@ -416,7 +435,7 @@ export function Plantel({
                     onUpdateName={onUpdateName}
                   />
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <NumberRating
                       player={player}
                       onUpdateRating={onUpdateRating}
@@ -426,6 +445,9 @@ export function Plantel({
                       onUpdateEsDelGrupo={onUpdateEsDelGrupo}
                     />
                   </div>
+
+                  {/* 🏆 ACÁ SE MUESTRAN LAS MEDALLAS DEL JUGADOR */}
+                  <PlayerBadges playerId={player.id} />
                 </div>
               </div>
 

@@ -79,6 +79,13 @@ export interface CreateMatchPlayerInput {
   playerId: string;
   hasSpecialTag: boolean;
 }
+export interface Badge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+}
 
 export interface CreateMatchInput {
   date: string;

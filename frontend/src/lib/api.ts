@@ -6,6 +6,7 @@ import type {
   MmrEntry,
   Player,
   RankingEntry,
+  Badge, // <-- Asegurate de importar este tipo si lo creaste en types.ts
 } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
@@ -38,6 +39,10 @@ export const api = {
       request<void>(`/api/players/${id}/rating`, { method: "PUT", body: JSON.stringify({ rating }) }),
     updateEsDelGrupo: (id: string, esDelGrupo: boolean) =>
       request<void>(`/api/players/${id}/es-del-grupo`, { method: "PUT", body: JSON.stringify({ esDelGrupo }) }),
+    
+    // NUEVA FUNCIÓN PARA TRAER LAS MEDALLAS DE UN JUGADOR
+    badges: (id: string) => request<Badge[]>(`/api/players/${id}/badges`),
+
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {

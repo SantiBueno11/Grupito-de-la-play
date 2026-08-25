@@ -69,6 +69,20 @@ public static class PlayersEndpoints
             return updated ? Results.NoContent() : Results.NotFound();
         });
 
+        // NUEVO ENDPOINT DE MEDALLAS / LOGROS
+        group.MapGet("/{id:guid}/badges", async (Guid id, IMediator mediator) =>
+        {
+            try
+            {
+                var badges = await mediator.Send(new GetPlayerBadgesQuery(id));
+                return Results.Ok(badges);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
         group.MapDelete("/{id:guid}", async (Guid id, IMediator mediator) =>
         {
             var deleted = await mediator.Send(new DeletePlayerCommand(id));
