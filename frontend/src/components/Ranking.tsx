@@ -472,7 +472,7 @@ export function Ranking({
     </h4>
     <ul className="text-[11px] leading-tight space-y-1.5 list-disc pl-3">
       <li>
-        <span className="font-semibold text-line">Victoria:</span> + 15 pts base + (2 pts por gol + 3 pts por cada gol de diferencia que tengas con el equipo contrario).
+        <span className="font-semibold text-line">Victoria:</span> + 15 pts base + 2 pts por cada gol de diferencia con el equipo contrario.
       </li>
     </ul>
   </div>
