@@ -155,8 +155,8 @@ export function Ranking({
                 </div>
 
                 <span className="text-base sm:text-lg font-black italic tracking-tighter text-line/50">
-  {tier.pts}
-</span>
+                  {tier.pts}
+                </span>
               </div>
             ))}
           </div>
@@ -184,16 +184,16 @@ export function Ranking({
                     const isExpanded =
                       expandedPlayerId === player.playerId;
 
-                    let orderClass = "order-2";
+                    let orderClass = "order-2"; // El #1 queda al centro
                     let marginClass = "mt-0";
 
                     if (position === 2) {
-                      orderClass = "order-3";
+                      orderClass = "order-1"; // El #2 (Plata) va a la izquierda
                       marginClass = "mt-6 sm:mt-8";
                     }
 
                     if (position === 3) {
-                      orderClass = "order-1";
+                      orderClass = "order-3"; // El #3 (Bronce) va a la derecha
                       marginClass = "mt-10 sm:mt-12";
                     }
 
@@ -219,7 +219,7 @@ export function Ranking({
                             )
                           }
                           aria-expanded={isExpanded}
-                          className="flex flex-col items-center w-full bg-line/5 p-2 sm:p-3 rounded-2xl border border-line/10 shadow-lg hover:bg-line/10 transition-colors relative group"
+                          className="flex flex-col items-center w-full bg-line/5 p-2 sm:p-3 rounded-2xl border border-line/10 shadow-lg hover:bg-line/10 transition-colors relative group cursor-pointer"
                         >
                           <div className="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
                             <ChevronDown
@@ -322,7 +322,7 @@ export function Ranking({
                             )
                           }
                           aria-expanded={isExpanded}
-                          className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-line/5"
+                          className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-line/5 cursor-pointer"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <span className="w-8 shrink-0 text-center font-black italic tracking-tighter text-lg sm:text-xl text-line/40">

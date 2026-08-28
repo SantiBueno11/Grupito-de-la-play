@@ -9,16 +9,15 @@ import {
   Users,
   UserPlus,
   Trophy,
-  ChevronDown,
-  ChevronUp,
+  User,
 } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { SectionTitle, EmptyState } from "./Shared";
 import { fileToCompressedDataUrl } from "../lib/image";
-import type { Badge, Player } from "../lib/types";
-import { api } from "../lib/api";
+import type { Player, Match } from "../lib/types";
+import { PlayerProfileModal } from "./PlayerProfileModal";
 
-// Importación de los logos de medallas desde la carpeta assets
+// Importación de los logos de medallas oficiales para la Guía lateral
 import aplastanteImg from "../assets/badges/aplastante.png";
 import enLonaImg from "../assets/badges/en_lona.png";
 import fantasmaImg from "../assets/badges/fantasma.png";
@@ -28,7 +27,6 @@ import muroImg from "../assets/badges/muro.png";
 import rachaFuegoImg from "../assets/badges/racha_fuego.png";
 import veteranoImg from "../assets/badges/veterano.png";
 
-// Diccionario exacto con las 8 medallas oficiales
 const badgeImages: Record<string, string> = {
   el_fiel: medallaElFielImg,
   racha_fuego: rachaFuegoImg,
@@ -42,72 +40,30 @@ const badgeImages: Record<string, string> = {
 
 interface Props {
   players: Player[];
+  matches: Match[];
   onCreate: (name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onUpdatePhoto: (
-    id: string,
-    photoUrl: string | null,
-  ) => Promise<void>;
-  onUpdateName: (
-    id: string,
-    name: string,
-  ) => Promise<void>;
-  onUpdateRating: (
-    id: string,
-    rating: number | null,
-  ) => Promise<void>;
-  onUpdateEsDelGrupo: (
-    id: string,
-    esDelGrupo: boolean,
-  ) => Promise<void>;
+  onUpdatePhoto: (id: string, photoUrl: string | null) => Promise<void>;
+  onUpdateName: (id: string, name: string) => Promise<void>;
+  onUpdateRating: (id: string, rating: number | null) => Promise<void>;
+  onUpdateEsDelGrupo: (id: string, esDelGrupo: boolean) => Promise<void>;
 }
 
-// Guía de medallas oficial (8 en total)
 const BADGE_DEFINITIONS = [
-  {
-    id: "el_fiel",
-    title: "El Fiel",
-    description: "Asistir a 5 partidos seguidos sin faltar",
-  },
-  {
-    id: "racha_fuego",
-    title: "Racha de Fuego",
-    description: "Ganar 3 partidos consecutivos",
-  },
-  {
-    id: "el_fantasma",
-    title: "El Fantasma",
-    description: "Faltar a 3 convocatorias al hilo",
-  },
-  {
-    id: "muro",
-    title: "El Muro",
-    description: "Ganar un partido manteniendo la valla invicta",
-  },
-  {
-    id: "en_lona",
-    title: "En la Lona",
-    description: "Perder 3 partidos seguidos",
-  },
-  {
-    id: "veterano",
-    title: "Veterano",
-    description: "Alcanzar los 20 partidos jugados",
-  },
-  {
-    id: "aplastante",
-    title: "Aplastante",
-    description: "Ganar un partido por goleada (4+ goles de diferencia)",
-  },
-  {
-    id: "invicto_mes",
-    title: "Invicto del Mes",
-    description: "No perder ningún partido durante todo un mes",
-  },
+  { id: "el_fiel", title: "El Fiel", description: "Asistir a 5 partidos seguidos sin faltar" },
+  { id: "racha_fuego", title: "Racha de Fuego", description: "Ganar 3 partidos consecutivos" },
+  { id: "el_fantasma", title: "El Fantasma", description: "Faltar a 3 convocatorias al hilo" },
+  { id: "muro", title: "El Muro", description: "Ganar un partido manteniendo la valla invicta" },
+  { id: "en_lona", title: "En la Lona", description: "Perder 3 partidos seguidos" },
+  { id: "veterano", title: "Veterano", description: "Alcanzar los 20 partidos jugados" },
+  { id: "aplastante", title: "Aplastante", description: "Ganar un partido por goleada (4+ goles de diferencia)" },
+  { id: "invicto_mes", title: "Invicto del Mes", description: "No perder ningún partido durante todo un mes" },
 ];
 
 function PlayerCard({
   player,
+  matches,
+  players,
   onDelete,
   onUpdatePhoto,
   onUpdateName,
@@ -115,188 +71,65 @@ function PlayerCard({
   onUpdateEsDelGrupo,
 }: {
   player: Player;
+  matches: Match[];
+  players: Player[];
   onDelete: Props["onDelete"];
   onUpdatePhoto: Props["onUpdatePhoto"];
   onUpdateName: Props["onUpdateName"];
   onUpdateRating: Props["onUpdateRating"];
   onUpdateEsDelGrupo: Props["onUpdateEsDelGrupo"];
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [loadingBadges, setLoadingBadges] = useState(false);
-
-  const toggleExpand = async () => {
-    const nextState = !expanded;
-
-    setExpanded(nextState);
-
-    if (nextState && badges.length === 0) {
-      setLoadingBadges(true);
-
-      try {
-        const data = await api.players.badges(player.id);
-
-        setBadges(data);
-      } catch (err) {
-        console.error("Error cargando medallas", err);
-      } finally {
-        setLoadingBadges(false);
-      }
-    }
-  };
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   return (
-    <div className="flex flex-col rounded-xl border border-line/10 bg-line/3 overflow-hidden transition-all">
+    <>
+      <div className="flex flex-col rounded-xl border border-line/10 bg-line/3 overflow-hidden transition-all">
+        <div className="flex items-start justify-between px-3.5 py-3.5">
+          <div className="flex items-start gap-3.5">
+            <PlayerPhotoButton player={player} onUpdatePhoto={onUpdatePhoto} />
 
-      {/* Cabecera principal del jugador */}
-      <div className="flex items-start justify-between px-3.5 py-3.5">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <PlayerNameField player={player} onUpdateName={onUpdateName} />
+                
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-amber-500/25 transition-colors cursor-pointer"
+                  title="Ver ficha completa, estadísticas y medallas"
+                >
+                  <User size={12} />
+                  <span>Ver Ficha</span>
+                </button>
+              </div>
 
-        <div className="flex items-start gap-3.5">
-
-          <PlayerPhotoButton
-            player={player}
-            onUpdatePhoto={onUpdatePhoto}
-          />
-
-          <div className="flex flex-col gap-1.5">
-
-            <PlayerNameField
-              player={player}
-              onUpdateName={onUpdateName}
-            />
-
-            <div className="flex flex-wrap items-center gap-2">
-
-              <NumberRating
-                player={player}
-                onUpdateRating={onUpdateRating}
-              />
-
-              <EsDelGrupoBadge
-                player={player}
-                onUpdateEsDelGrupo={onUpdateEsDelGrupo}
-              />
-
+              <div className="flex flex-wrap items-center gap-2">
+                <NumberRating player={player} onUpdateRating={onUpdateRating} />
+                <EsDelGrupoBadge player={player} onUpdateEsDelGrupo={onUpdateEsDelGrupo} />
+              </div>
             </div>
-
-            {/* Botón desplegable */}
-            <button
-              type="button"
-              onClick={toggleExpand}
-              className="flex items-center gap-1.5 mt-1 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors w-fit"
-            >
-              <Trophy size={14} />
-
-              <span>
-                {expanded
-                  ? "Ocultar medallas y logros"
-                  : "Ver medallas y logros"}
-              </span>
-
-              {expanded ? (
-                <ChevronUp size={14} />
-              ) : (
-                <ChevronDown size={14} />
-              )}
-            </button>
-
           </div>
+
+          <button
+            type="button"
+            onClick={() => void onDelete(player.id)}
+            className="p-1 text-line/40 hover:text-loss-soft cursor-pointer"
+            title="Eliminar"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => void onDelete(player.id)}
-          className="p-1 text-line/40 hover:text-loss-soft"
-          title="Eliminar"
-        >
-          <Trash2 size={15} />
-        </button>
-
       </div>
 
-      {/* Desplegable con medallas */}
-      {expanded && (
-        <div className="border-t border-line/10 bg-line/5 p-4 animate-fadeIn">
-
-          <h4 className="text-xs font-bold uppercase tracking-wider text-line/60 mb-3">
-            Vitrina de Logros de {player.name}
-          </h4>
-
-          {loadingBadges ? (
-
-            <p className="text-xs text-line/40 py-4 text-center">
-              Cargando medallas...
-            </p>
-
-          ) : badges.length === 0 ? (
-
-            <p className="text-xs text-line/40 py-4 text-center">
-              No hay medallas disponibles.
-            </p>
-
-          ) : (
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-
-              {badges.map((badge) => {
-
-                const imgSrc = badgeImages[badge.id];
-
-                return (
-                  <div
-                    key={badge.id}
-                    className={`flex flex-col items-center justify-between h-[210px] p-3.5 rounded-xl border text-center transition-all ${
-                      badge.unlocked
-                        ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-md"
-                        : "bg-line/3 border-line/10 text-line/30 grayscale opacity-40"
-                    }`}
-                    title={`${badge.title}: ${badge.description}`}
-                  >
-
-                    {/* ÁREA DE LA MEDALLA */}
-                    <div className="flex items-center justify-center w-full h-[140px] overflow-visible">
-
-                      {imgSrc ? (
-
-                        <img
-                          src={imgSrc}
-                          alt={badge.title}
-                          className="w-full h-full object-contain scale-[3.5] drop-shadow-xl"
-                        />
-                      ) : (
-                        <span className="text-7xl">
-                          🏆
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Estado de la medalla */}
-                    <div className="flex flex-col items-center w-full mt-2">
-                      <span
-                        className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
-                          badge.unlocked
-                            ? "bg-amber-500 text-pitch-ink"
-                            : "bg-line/10 text-line/40"
-                        }`}
-                      >
-                        {badge.unlocked
-                          ? "Desbloqueado"
-                          : "Bloqueado"}
-                      </span>
-                    </div>
-
-                  </div>
-                );
-              })}
-
-            </div>
-
-          )}
-
-        </div>
+      {showProfileModal && (
+        <PlayerProfileModal
+          playerId={player.id}
+          players={players}
+          matches={matches || []}
+          onClose={() => setShowProfileModal(false)}
+        />
       )}
-
-    </div>
+    </>
   );
 }
 
@@ -314,26 +147,15 @@ function PlayerPhotoButton({
     inputRef.current?.click();
   };
 
-  const onChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const onChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-
     event.target.value = "";
-
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setUploading(true);
-
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
-
-      await onUpdatePhoto(
-        player.id,
-        dataUrl,
-      );
+      await onUpdatePhoto(player.id, dataUrl);
     } finally {
       setUploading(false);
     }
@@ -343,45 +165,23 @@ function PlayerPhotoButton({
     <button
       type="button"
       onClick={pick}
-      className="group relative shrink-0"
+      className="group relative shrink-0 cursor-pointer"
       title="Cambiar foto"
       disabled={uploading}
     >
-
-      <Avatar
-        name={player.name}
-        photoUrl={player.photoUrl}
-      />
-
+      <Avatar name={player.name} photoUrl={player.photoUrl} />
       <span
         className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2"
-        style={{
-          background: "#D4A017",
-          borderColor: "#0F2419",
-        }}
+        style={{ background: "#D4A017", borderColor: "#0F2419" }}
       >
-
-        <Camera
-          size={11}
-          color="#0F2419"
-        />
-
+        <Camera size={11} color="#0F2419" />
       </span>
-
       {uploading && (
         <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-[9px] font-bold">
           ...
         </span>
       )}
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onChange}
-      />
-
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onChange} />
     </button>
   );
 }
@@ -411,7 +211,6 @@ function PlayerNameField({
 
   const save = async () => {
     const trimmed = value.trim();
-
     if (!trimmed || trimmed === player.name) {
       setEditing(false);
       return;
@@ -419,20 +218,11 @@ function PlayerNameField({
 
     setSaving(true);
     setError(null);
-
     try {
-      await onUpdateName(
-        player.id,
-        trimmed,
-      );
-
+      await onUpdateName(player.id, trimmed);
       setEditing(false);
     } catch (errorValue) {
-      setError(
-        errorValue instanceof Error
-          ? errorValue.message
-          : "No se pudo cambiar el nombre",
-      );
+      setError(errorValue instanceof Error ? errorValue.message : "No se pudo cambiar el nombre");
     } finally {
       setSaving(false);
     }
@@ -441,77 +231,33 @@ function PlayerNameField({
   if (editing) {
     return (
       <div className="flex flex-col gap-1">
-
         <div className="flex items-center gap-1.5">
-
           <input
             autoFocus
             value={value}
-            onChange={(event) =>
-              setValue(event.target.value)
-            }
+            onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
-
-              if (event.key === "Enter") {
-                void save();
-              }
-
-              if (event.key === "Escape") {
-                cancel();
-              }
-
+              if (event.key === "Enter") void save();
+              if (event.key === "Escape") cancel();
             }}
-            className="w-40 rounded-lg border border-gold/50 bg-line/6 px-2 py-1 text-sm font-semibold outline-none"
+            className="w-32 rounded-lg border border-gold/50 bg-line/6 px-2 py-1 text-sm font-semibold outline-none"
           />
-
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={saving}
-            className="p-1 text-win-soft"
-            title="Guardar"
-          >
+          <button type="button" onClick={() => void save()} disabled={saving} className="p-1 text-win-soft cursor-pointer" title="Guardar">
             <Check size={16} />
           </button>
-
-          <button
-            type="button"
-            onClick={cancel}
-            disabled={saving}
-            className="p-1 text-line/40"
-            title="Cancelar"
-          >
+          <button type="button" onClick={cancel} disabled={saving} className="p-1 text-line/40 cursor-pointer" title="Cancelar">
             <X size={16} />
           </button>
-
         </div>
-
-        {error && (
-          <p className="text-xs text-loss-soft">
-            {error}
-          </p>
-        )}
-
+        {error && <p className="text-xs text-loss-soft">{error}</p>}
       </div>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={startEdit}
-      className="group flex items-center gap-1.5"
-    >
-
-      <span className="font-semibold">
-        {player.name}
-      </span>
-
-      <Pencil
-        size={13}
-        className="text-line/30 group-hover:text-line/60"
-      />
-
+    <button type="button" onClick={startEdit} className="group flex items-center gap-1.5 cursor-pointer">
+      <span className="font-semibold">{player.name}</span>
+      <Pencil size={13} className="text-line/30 group-hover:text-line/60" />
     </button>
   );
 }
@@ -524,53 +270,30 @@ function NumberRating({
   onUpdateRating: Props["onUpdateRating"];
 }) {
   const click = (rating: number) => {
-
-    onUpdateRating(
-      player.id,
-      player.rating === rating
-        ? null
-        : rating,
-    );
-
+    onUpdateRating(player.id, player.rating === rating ? null : rating);
   };
 
   return (
     <div className="flex items-center gap-1">
-
-      <span className="mr-0.5 text-[10px] uppercase tracking-wide text-line/40">
-        Nivel
-      </span>
-
+      <span className="mr-0.5 text-[10px] uppercase tracking-wide text-line/40">Nivel</span>
       {[1, 2, 3, 4, 5].map((rating) => {
-
         const active = player.rating === rating;
-
         return (
           <button
             key={rating}
             type="button"
             onClick={() => click(rating)}
-            className="flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold transition-colors cursor-pointer"
             style={{
-              borderColor: active
-                ? "#D4A017"
-                : "rgba(245,241,232,0.15)",
-
-              background: active
-                ? "#D4A017"
-                : "transparent",
-
-              color: active
-                ? "#0F2419"
-                : "rgba(245,241,232,0.5)",
+              borderColor: active ? "#D4A017" : "rgba(245,241,232,0.15)",
+              background: active ? "#D4A017" : "transparent",
+              color: active ? "#0F2419" : "rgba(245,241,232,0.5)",
             }}
           >
             {rating}
           </button>
         );
-
       })}
-
     </div>
   );
 }
@@ -587,49 +310,24 @@ function EsDelGrupoBadge({
   return (
     <button
       type="button"
-      onClick={() =>
-        void onUpdateEsDelGrupo(
-          player.id,
-          !isDelGrupo,
-        )
-      }
-      className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors"
+      onClick={() => void onUpdateEsDelGrupo(player.id, !isDelGrupo)}
+      className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors cursor-pointer"
       style={{
-        borderColor: isDelGrupo
-          ? "#D4A017"
-          : "rgba(245,241,232,0.15)",
-
-        background: isDelGrupo
-          ? "rgba(212,160,23,0.15)"
-          : "transparent",
-
-        color: isDelGrupo
-          ? "#D4A017"
-          : "rgba(245,241,232,0.4)",
+        borderColor: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.15)",
+        background: isDelGrupo ? "rgba(212,160,23,0.15)" : "transparent",
+        color: isDelGrupo ? "#D4A017" : "rgba(245,241,232,0.4)",
       }}
-      title={
-        isDelGrupo
-          ? "Es del grupo — tocá para marcarlo como invitado"
-          : "Invitado — tocá para sumarlo al grupo"
-      }
+      title={isDelGrupo ? "Es del grupo" : "Invitado"}
     >
-
-      {isDelGrupo ? (
-        <Users size={11} />
-      ) : (
-        <UserPlus size={11} />
-      )}
-
-      {isDelGrupo
-        ? "Grupo"
-        : "Invitado"}
-
+      {isDelGrupo ? <Users size={11} /> : <UserPlus size={11} />}
+      {isDelGrupo ? "Grupo" : "Invitado"}
     </button>
   );
 }
 
 export function Plantel({
   players,
+  matches,
   onCreate,
   onDelete,
   onUpdatePhoto,
@@ -637,205 +335,111 @@ export function Plantel({
   onUpdateRating,
   onUpdateEsDelGrupo,
 }: Props) {
-
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const add = async () => {
-
     const trimmedName = name.trim();
-
-    if (!trimmedName) {
-      return;
-    }
+    if (!trimmedName) return;
 
     setSaving(true);
     setError(null);
-
     try {
-
       await onCreate(trimmedName);
-
       setName("");
-
     } catch (errorValue) {
-
-      setError(
-        errorValue instanceof Error
-          ? errorValue.message
-          : "No se pudo agregar el jugador",
-      );
-
+      setError(errorValue instanceof Error ? errorValue.message : "No se pudo agregar el jugador");
     } finally {
-
       setSaving(false);
-
     }
   };
 
   return (
     <section>
+      <SectionTitle eyebrow="Plantel" title="Tus jugadores y logros" />
 
-      <SectionTitle
-        eyebrow="Plantel"
-        title="Tus jugadores y logros"
-      />
-
-      {/* DISEÑO EN 2 COLUMNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
-
-        {/* COLUMNA IZQUIERDA: Jugadores */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-
           <div className="flex gap-2">
-
             <input
               value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
+              onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
-
-                if (event.key === "Enter") {
-                  void add();
-                }
-
+                if (event.key === "Enter") void add();
               }}
               placeholder="Nombre del jugador"
               className="flex-1 rounded-lg border border-line/15 bg-line/6 px-3 py-2.5 text-sm text-line outline-none placeholder:text-line/40"
             />
-
             <button
               type="button"
               onClick={() => void add()}
               disabled={saving}
-              className="flex items-center gap-1.5 rounded-lg bg-win px-4 py-2.5 text-sm font-bold text-pitch-ink disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg bg-win px-4 py-2.5 text-sm font-bold text-pitch-ink disabled:opacity-50 cursor-pointer"
             >
-
               <Plus size={16} />
-
               Agregar
-
             </button>
-
           </div>
 
-          {error && (
-            <p className="text-xs text-loss-soft">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-xs text-loss-soft">{error}</p>}
 
           <p className="text-xs text-line/40">
-            Tocá la foto para cambiarla, el nombre para editarlo, o las estrellas para poner su nivel.
+            Tocá la foto para cambiarla, el nombre para editarlo, o el botón <b>"Ver Ficha"</b> para abrir su perfil completo con medallas e historial.
           </p>
 
           {players.length === 0 ? (
-
-            <EmptyState
-              text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos."
-            />
-
+            <EmptyState text="Todavía no cargaste jugadores. Agregá a los primeros para poder armar equipos." />
           ) : (
-
             <div className="flex flex-col gap-2">
-
               {players.map((player) => (
-
                 <PlayerCard
                   key={player.id}
                   player={player}
+                  matches={matches}
+                  players={players}
                   onDelete={onDelete}
                   onUpdatePhoto={onUpdatePhoto}
                   onUpdateName={onUpdateName}
                   onUpdateRating={onUpdateRating}
                   onUpdateEsDelGrupo={onUpdateEsDelGrupo}
                 />
-
               ))}
-
             </div>
-
           )}
-
         </div>
 
-        {/* COLUMNA DERECHA: Guía de Medallas */}
+        {/* Guía de Medallas */}
         <div className="lg:col-span-1">
-
           <div className="sticky top-4 rounded-xl border border-line/10 bg-line/3 p-4 flex flex-col gap-3">
-
             <div className="flex items-center gap-2 border-b border-line/10 pb-2.5">
-
-              <Trophy
-                size={18}
-                className="text-amber-400"
-              />
-
-              <h3 className="font-bold text-sm text-line">
-                Guía de Medallas
-              </h3>
-
+              <Trophy size={18} className="text-amber-400" />
+              <h3 className="font-bold text-sm text-line">Guía de Medallas</h3>
             </div>
-
             <p className="text-xs text-line/60 leading-relaxed">
               Cada jugador puede desbloquear estos logros automáticamente según su rendimiento en los partidos:
             </p>
-
             <div className="flex flex-col gap-2.5 mt-1">
-
               {BADGE_DEFINITIONS.map((badge) => {
-
                 const imgSrc = badgeImages[badge.id];
-
                 return (
-                  <div
-                    key={badge.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-line/10 bg-line/5"
-                  >
-
+                  <div key={badge.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-line/10 bg-line/5">
                     {imgSrc ? (
-
-                      <img
-                        src={imgSrc}
-                        alt={badge.title}
-                        className="w-7 h-7 object-contain shrink-0"
-                      />
-
+                      <img src={imgSrc} alt={badge.title} className="w-7 h-7 object-contain shrink-0" />
                     ) : (
-
-                      <span className="text-xl shrink-0">
-                        🏆
-                      </span>
-
+                      <span className="text-xl shrink-0">🏆</span>
                     )}
-
                     <div className="flex flex-col">
-
-                      <span className="text-xs font-bold text-amber-300">
-                        {badge.title}
-                      </span>
-
-                      <span className="text-[11px] text-line/60 leading-tight">
-                        {badge.description}
-                      </span>
-
+                      <span className="text-xs font-bold text-amber-300">{badge.title}</span>
+                      <span className="text-[11px] text-line/60 leading-tight">{badge.description}</span>
                     </div>
-
                   </div>
                 );
-
               })}
-
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </section>
   );
 }
