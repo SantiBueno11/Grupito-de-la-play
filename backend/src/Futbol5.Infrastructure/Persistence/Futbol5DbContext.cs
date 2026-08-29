@@ -8,12 +8,19 @@ public class Futbol5DbContext(DbContextOptions<Futbol5DbContext> options)
     : DbContext(options), IApplicationDbContext
 {
     public DbSet<Player> Players => Set<Player>();
+
     public DbSet<Match> Matches => Set<Match>();
+
     public DbSet<MatchPlayer> MatchPlayers => Set<MatchPlayer>();
+
+    public DbSet<GroupSettingsEntity> GroupSettings => Set<GroupSettingsEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(Futbol5DbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(Futbol5DbContext).Assembly
+        );
+
         base.OnModelCreating(modelBuilder);
     }
 }
