@@ -6,10 +6,10 @@ import type {
   MmrEntry,
   Player,
   RankingEntry,
+  Badge,
 } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
-
+const API_URL = import.meta.env.VITE_API_URL ?? "https://grupito-de-la-play.onrender.com";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -44,6 +44,7 @@ export const api = {
       request<void>(`/api/players/${id}/rating`, { method: "PUT", body: JSON.stringify({ rating }) }),
     updateEsDelGrupo: (id: string, esDelGrupo: boolean) =>
       request<void>(`/api/players/${id}/es-del-grupo`, { method: "PUT", body: JSON.stringify({ esDelGrupo }) }),
+    badges: (id: string) => request<Badge[]>(`/api/players/${id}/badges`),
     remove: (id: string) => request<void>(`/api/players/${id}`, { method: "DELETE" }),
   },
   matches: {
