@@ -208,7 +208,7 @@ export default function App() {
         ) : tab === "historial" ? (
           <Historial matches={matches} onDelete={deleteMatch} />
         ) : tab === "ranking" ? (
-          <Ranking stats={ranking} mmr={mmr} />
+          <Ranking stats={ranking} mmr={mmr} matches={matches} />
         ) : tab === "asistencia" ? (
           <Attendance data={attendance} />
         ) : tab === "caraacara" ? (

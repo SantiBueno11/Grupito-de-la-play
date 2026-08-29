@@ -5,6 +5,7 @@ public record MatchPlayerDto(Guid PlayerId, string PlayerName, string? PhotoUrl,
 public record MatchDto(
     Guid Id,
     DateOnly Date,
+    DateTime CreatedAt,
     string TeamAName,
     string TeamBName,
     int ScoreA,

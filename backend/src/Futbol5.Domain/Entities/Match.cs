@@ -6,6 +6,7 @@ public class Match
 {
     public Guid Id { get; private set; }
     public DateOnly Date { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     public string TeamAName { get; private set; } = "Equipo A";
     public string TeamBName { get; private set; } = "Equipo B";
     public int ScoreA { get; private set; }
@@ -26,6 +27,7 @@ public class Match
 
         Id = Guid.NewGuid();
         Date = date;
+        CreatedAt = DateTime.UtcNow;
         TeamAName = string.IsNullOrWhiteSpace(teamAName) ? "Equipo A" : teamAName.Trim();
         TeamBName = string.IsNullOrWhiteSpace(teamBName) ? "Equipo B" : teamBName.Trim();
         ScoreA = scoreA;

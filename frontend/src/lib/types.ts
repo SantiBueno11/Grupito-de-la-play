@@ -16,6 +16,7 @@ export interface MatchPlayer {
 export interface Match {
   id: string;
   date: string;
+  createdAt: string;
   teamAName: string;
   teamBName: string;
   scoreA: number;

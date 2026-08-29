@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Avatar } from "./Avatar";
 import { RankLogo } from "./RankLogo";
 import { SectionTitle, EmptyState } from "./Shared";
-import type { MmrEntry, RankingEntry } from "../lib/types";
+import type { MmrEntry, RankingEntry, Match } from "../lib/types";
 
 // --- CONFIGURACIÓN DE RANGOS ---
 const RANK_TIERS = [
@@ -26,7 +26,6 @@ function streakLabel(streak: number) {
 
   if (streak < 0) {
     const losses = Math.abs(streak);
-
     return (
       <span className="font-bold">
         <span className="font-black italic">{losses}</span>{" "}
@@ -81,13 +80,10 @@ function StatCard({
   };
 
   return (
-    <div
-      className={`min-w-0 rounded-lg border px-2.5 py-1.5 ${toneClasses[tone]}`}
-    >
+    <div className={`min-w-0 rounded-lg border px-2.5 py-1.5 ${toneClasses[tone]}`}>
       <div className="mb-0.5 text-[9px] font-bold uppercase tracking-widest opacity-70">
         {label}
       </div>
-
       <div className="whitespace-normal break-words text-xs font-black italic tracking-tighter leading-tight">
         {value}
       </div>
@@ -96,43 +92,95 @@ function StatCard({
 }
 
 export function Ranking({
-  stats,
+  stats: _stats,
   mmr,
+  matches = [],
 }: {
   stats: RankingEntry[];
   mmr: MmrEntry[];
+  matches?: Match[];
 }) {
-  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
-
-  const statsByPlayerId = new Map(stats.map((s) => [s.playerId, s]));
   const sortedMmr = [...mmr].sort((a, b) => b.mmr - a.mmr);
 
   const top3 = sortedMmr.slice(0, 3);
   const restOfPlayers = sortedMmr.slice(3);
 
+  // Función para obtener el cambio de puntos del último evento del jugador
+  // (jugó en teamA/teamB, o faltó y quedó en "ausentes" de ese partido).
+  const getLastMatchDelta = (playerId: string, playerName: string) => {
+    if (!playerName) return null;
+    const nameLower = playerName.trim().toLowerCase();
+    const targetId = playerId ? String(playerId).trim() : "";
+
+    const isPlayer = (p: any) => {
+      if (!p) return false;
+      const pId = typeof p === "string" ? p : p.id || p.playerId;
+      const pName = typeof p === "string" ? p : p.name || p.playerName;
+      return (targetId && pId && String(pId).trim() === targetId) ||
+             (pName && String(pName).trim().toLowerCase() === nameLower);
+    };
+
+    type PlayerEvent =
+      | { date: number; createdAt: number; type: "played"; match: Match; onTeamA: boolean }
+      | { date: number; createdAt: number; type: "absent" };
+
+    const events: PlayerEvent[] = [];
+
+    for (const m of matches) {
+      if (!m) continue;
+      const date = new Date((m as any).date || Date.now()).getTime();
+      const createdAt = (m as any).createdAt
+        ? new Date((m as any).createdAt).getTime()
+        : 0;
+
+      const onTeamA = m.teamA?.some(isPlayer) ?? false;
+      const onTeamB = m.teamB?.some(isPlayer) ?? false;
+      const wasAbsent = (m as any).ausentes?.some(isPlayer) ?? false;
+
+      if (onTeamA || onTeamB) {
+        events.push({ date, createdAt, type: "played", match: m, onTeamA });
+      } else if (wasAbsent) {
+        events.push({ date, createdAt, type: "absent" });
+      }
+    }
+
+    if (events.length === 0) return null;
+
+    events.sort((a, b) => b.date - a.date || b.createdAt - a.createdAt);
+    const latestEvent = events[0];
+
+    // Si el último evento fue una ausencia (-50 puntos)
+    if (latestEvent.type === "absent") {
+      return { delta: -50 };
+    }
+
+    // Si fue un partido, calculamos si ganó o perdió
+    const lastMatch = latestEvent.match;
+    const diff = Math.abs(lastMatch.scoreA - lastMatch.scoreB);
+    const won = latestEvent.onTeamA
+      ? lastMatch.scoreA > lastMatch.scoreB
+      : lastMatch.scoreB > lastMatch.scoreA;
+    const tied = lastMatch.scoreA === lastMatch.scoreB;
+
+    if (tied) return { delta: 0 };
+
+    const points = 15 + diff * 2;
+    const delta = won ? points : -points;
+    return { delta };
+  };
+
   return (
     <section className="w-screen relative left-1/2 -translate-x-1/2 px-6">
-      <SectionTitle
-        eyebrow="Clasificatoria"
-        title="Tabla de rangos"
-      />
+      <SectionTitle eyebrow="Clasificatoria" title="Tabla de rangos" />
 
-      {/* CONTENEDOR GRID:
-          360px para rangos
-          espacio flexible para podio + tabla
-          320px para sistema MMR
-      */}
       <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)_320px] gap-4 items-start mt-3 w-full">
 
         {/* =========================================================
             COLUMNA IZQUIERDA: LISTA DE RANGOS
         ========================================================== */}
-        <aside
-          className="order-2 lg:order-1 bg-line/3 border border-line/10 rounded-2xl p-5 shadow-sm w-full"
-        >
+        <aside className="order-2 lg:order-1 bg-line/3 border border-line/10 rounded-2xl p-5 shadow-sm w-full">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={18} className="text-line/60" />
-
             <h3 className="font-black italic tracking-tight text-lg text-line/90 uppercase">
               Rangos
             </h3>
@@ -148,12 +196,10 @@ export function Ranking({
                   <div className="scale-110 transform">
                     <RankLogo rank={tier.name} />
                   </div>
-
                   <span className="text-xs sm:text-sm font-bold text-line/80">
                     {tier.name}
                   </span>
                 </div>
-
                 <span className="text-base sm:text-lg font-black italic tracking-tighter text-line/50">
                   {tier.pts}
                 </span>
@@ -179,21 +225,17 @@ export function Ranking({
                     const position = index + 1;
                     const isFirst = position === 1;
 
-                    const playerStats = statsByPlayerId.get(player.playerId);
-                    const currentStreak = playerStats?.currentStreak ?? 0;
-                    const isExpanded =
-                      expandedPlayerId === player.playerId;
+                    const lastDelta = getLastMatchDelta(player.playerId, player.playerName);
 
-                    let orderClass = "order-2"; // El #1 queda al centro
+                    let orderClass = "order-2";
                     let marginClass = "mt-0";
 
                     if (position === 2) {
-                      orderClass = "order-1"; // El #2 (Plata) va a la izquierda
+                      orderClass = "order-1";
                       marginClass = "mt-6 sm:mt-8";
                     }
-
                     if (position === 3) {
-                      orderClass = "order-3"; // El #3 (Bronce) va a la derecha
+                      orderClass = "order-3";
                       marginClass = "mt-10 sm:mt-12";
                     }
 
@@ -211,28 +253,8 @@ export function Ranking({
                         key={player.playerId}
                         className={`flex flex-col w-[105px] sm:w-36 ${orderClass} ${marginClass} transition-all`}
                       >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedPlayerId(
-                              isExpanded ? null : player.playerId
-                            )
-                          }
-                          aria-expanded={isExpanded}
-                          className="flex flex-col items-center w-full bg-line/5 p-2 sm:p-3 rounded-2xl border border-line/10 shadow-lg hover:bg-line/10 transition-colors relative group cursor-pointer"
-                        >
-                          <div className="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                            <ChevronDown
-                              size={14}
-                              className={`text-line/45 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          </div>
-
-                          <div
-                            className={`text-3xl sm:text-4xl font-black italic tracking-tighter mb-1 drop-shadow-md ${medalColor}`}
-                          >
+                        <div className="flex flex-col items-center w-full bg-line/5 p-2 sm:p-3 rounded-2xl border border-line/10 shadow-lg">
+                          <div className={`text-3xl sm:text-4xl font-black italic tracking-tighter mb-1 drop-shadow-md ${medalColor}`}>
                             #{position}
                           </div>
 
@@ -249,7 +271,7 @@ export function Ranking({
                           </div>
 
                           <div className="flex flex-col items-center gap-1 bg-line/5 w-full py-2 rounded-lg">
-                            <div className="scale-[1.5] transform transition-transform group-hover:scale-[1.65] my-1">
+                            <div className="scale-[1.5] transform my-1">
                               <RankLogo rank={player.rank} />
                             </div>
 
@@ -258,36 +280,27 @@ export function Ranking({
                                 {player.mmr} PTS
                               </span>
 
-                              <span className="text-[8px] font-bold text-line/45 uppercase tracking-widest">
+                              {/* Cambio de puntos del último partido o ausencia */}
+                              {lastDelta ? (
+                                <span className={`text-[10px] font-bold mt-1 px-1.5 py-0.5 rounded ${
+                                  lastDelta.delta > 0 
+                                    ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20" 
+                                    : lastDelta.delta < 0 
+                                    ? "text-rose-400 bg-rose-500/10 border border-rose-500/20" 
+                                    : "text-line/50"
+                                }`}>
+                                  {lastDelta.delta > 0 ? `▲+${lastDelta.delta}` : lastDelta.delta < 0 ? `▼${lastDelta.delta}` : "—"}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-line/40 mt-1">Sin actividad</span>
+                              )}
+
+                              <span className="text-[8px] font-bold text-line/45 uppercase tracking-widest mt-0.5">
                                 {player.rank}
                               </span>
                             </div>
                           </div>
-                        </button>
-
-                        {isExpanded && (
-                          <div className="flex flex-col gap-1 mt-1.5 animate-in fade-in slide-in-from-top-2">
-                            <StatCard
-                              label="Ganados"
-                              value={`${playerStats?.wins ?? 0} G`}
-                              tone="win"
-                            />
-
-                            <StatCard
-                              label="Perdidos"
-                              value={`${playerStats?.losses ?? 0} P`}
-                              tone="loss"
-                            />
-
-                            <StatCard
-                              label="Racha"
-                              value={
-                                <StreakValue streak={currentStreak} />
-                              }
-                              tone="line"
-                            />
-                          </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -300,29 +313,16 @@ export function Ranking({
               {restOfPlayers.length > 0 && (
                 <div className="overflow-hidden rounded-2xl border border-line/10 bg-line/3 shadow-sm">
                   {restOfPlayers.map((player, index) => {
-                    const playerStats = statsByPlayerId.get(player.playerId);
-                    const currentStreak =
-                      playerStats?.currentStreak ?? 0;
-
-                    const isExpanded =
-                      expandedPlayerId === player.playerId;
-
                     const realPosition = index + 4;
+                    const lastDelta = getLastMatchDelta(player.playerId, player.playerName);
 
                     return (
                       <div
                         key={player.playerId}
                         className="border-b border-line/10 last:border-b-0"
                       >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedPlayerId(
-                              isExpanded ? null : player.playerId
-                            )
-                          }
-                          aria-expanded={isExpanded}
-                          className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors hover:bg-line/5 cursor-pointer"
+                        <div
+                          className="flex w-full items-center justify-between gap-3 px-3.5 py-3"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <span className="w-8 shrink-0 text-center font-black italic tracking-tighter text-lg sm:text-xl text-line/40">
@@ -339,15 +339,11 @@ export function Ranking({
                               <div className="truncate text-sm font-semibold">
                                 {player.playerName}
                               </div>
-
                               <div className="text-[11px] text-line/45">
-                                <span className="font-black italic tracking-tighter text-xs">
+                                <span className="font-black italic tracking-tighter text-xs mr-1">
                                   {player.gamesPlayed}
-                                </span>{" "}
-                                {player.gamesPlayed === 1
-                                  ? "partido"
-                                  : "partidos"}{" "}
-                                jugados
+                                </span>
+                                {player.gamesPlayed === 1 ? "partido" : "partidos"} jugados
                               </div>
                             </div>
                           </div>
@@ -362,43 +358,27 @@ export function Ranking({
                                 {player.mmr} PTS
                               </div>
 
+                              {/* Cambio de puntos del último partido o ausencia */}
+                              {lastDelta ? (
+                                <div className={`text-[10px] font-bold inline-block px-1 rounded ${
+                                  lastDelta.delta > 0 
+                                    ? "text-emerald-400 bg-emerald-500/10" 
+                                    : lastDelta.delta < 0 
+                                    ? "text-rose-400 bg-rose-500/10" 
+                                    : "text-line/50"
+                                }`}>
+                                  {lastDelta.delta > 0 ? `▲+${lastDelta.delta}` : lastDelta.delta < 0 ? `▼${lastDelta.delta}` : "—"}
+                                </div>
+                              ) : (
+                                <div className="text-[9px] text-line/40">Sin actividad</div>
+                              )}
+
                               <div className="text-[9px] font-bold text-line/45 uppercase tracking-wider">
                                 {player.rank}
                               </div>
                             </div>
-
-                            <ChevronDown
-                              size={16}
-                              className={`text-line/45 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
                           </div>
-                        </button>
-
-                        {isExpanded && (
-                          <div className="grid grid-cols-3 gap-2 border-t border-line/10 px-3.5 py-3">
-                            <StatCard
-                              label="Ganados"
-                              value={`${playerStats?.wins ?? 0} G`}
-                              tone="win"
-                            />
-
-                            <StatCard
-                              label="Perdidos"
-                              value={`${playerStats?.losses ?? 0} P`}
-                              tone="loss"
-                            />
-
-                            <StatCard
-                              label="Racha"
-                              value={
-                                <StreakValue streak={currentStreak} />
-                              }
-                              tone="line"
-                            />
-                          </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -411,12 +391,9 @@ export function Ranking({
         {/* =========================================================
             COLUMNA DERECHA: EXPLICACIÓN DEL MMR
         ========================================================== */}
-        <aside
-          className="order-3 lg:order-3 bg-line/3 border border-line/10 rounded-2xl p-5 shadow-sm"
-        >
+        <aside className="order-3 lg:order-3 bg-line/3 border border-line/10 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Swords size={18} className="text-line/60" />
-
             <h3 className="font-black italic tracking-tight text-lg text-line/90 uppercase">
               Sistema MMR
             </h3>
@@ -430,8 +407,6 @@ export function Ranking({
             </p>
 
             <div className="flex flex-col gap-3">
-
-              {/* ASISTENCIA */}
               <div className="flex gap-3 items-start bg-win/5 p-3 rounded-xl border border-win/10">
                 <div className="bg-win/20 p-1.5 rounded-lg text-win-soft shrink-0">
                   <UserCheck size={16} />
@@ -446,7 +421,6 @@ export function Ranking({
                 </div>
               </div>
 
-              {/* AUSENCIA */}
               <div className="flex gap-3 items-start bg-loss/5 p-3 rounded-xl border border-loss/10">
                 <div className="bg-loss/20 p-1.5 rounded-lg text-loss-soft shrink-0">
                   <UserX size={16} />
@@ -461,40 +435,37 @@ export function Ranking({
                 </div>
               </div>
 
-             {/* GANAR */}
-<div className="flex gap-3 items-start bg-win/5 p-3 rounded-xl border border-win/10">
-  <div className="bg-win/20 p-1.5 rounded-lg text-win-soft shrink-0">
-    <TrendingUp size={16} />
-  </div>
-  <div>
-    <h4 className="font-bold text-line/90 text-xs mb-1.5">
-      Ganar Partidos
-    </h4>
-    <ul className="text-[11px] leading-tight space-y-1.5 list-disc pl-3">
-      <li>
-        <span className="font-semibold text-line">Victoria:</span> + 15 pts base + 2 pts por cada gol de diferencia con el equipo contrario.
-      </li>
-    </ul>
-  </div>
-</div>
+              <div className="flex gap-3 items-start bg-win/5 p-3 rounded-xl border border-win/10">
+                <div className="bg-win/20 p-1.5 rounded-lg text-win-soft shrink-0">
+                  <TrendingUp size={16} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-line/90 text-xs mb-1.5">
+                    Ganar Partidos
+                  </h4>
+                  <ul className="text-[11px] leading-tight space-y-1.5 list-disc pl-3">
+                    <li>
+                      <span className="font-semibold text-line">Victoria:</span> + 15 pts base + 2 pts por cada gol de diferencia con el equipo contrario.
+                    </li>
+                  </ul>
+                </div>
+              </div>
 
-             {/* PERDER */}
-<div className="flex gap-3 items-start bg-loss/5 p-3 rounded-xl border border-loss/10">
-  <div className="bg-loss/20 p-1.5 rounded-lg text-loss-soft shrink-0">
-    <TrendingDown size={16} />
-  </div>
-  <div>
-    <h4 className="font-bold text-line/90 text-xs mb-1.5">
-      Derrotas y Ausencias
-    </h4>
-    <ul className="text-[11px] leading-tight space-y-1.5 list-disc pl-3">
-      <li>
-        <span className="font-semibold text-line">Derrota:</span> Se restan los puntos del partido (15 + 2 pts por cada gol de diferencia).
-      </li>
-    </ul>
-  </div>
-</div>
-
+              <div className="flex gap-3 items-start bg-loss/5 p-3 rounded-xl border border-loss/10">
+                <div className="bg-loss/20 p-1.5 rounded-lg text-loss-soft shrink-0">
+                  <TrendingDown size={16} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-line/90 text-xs mb-1.5">
+                    Derrotas y Ausencias
+                  </h4>
+                  <ul className="text-[11px] leading-tight space-y-1.5 list-disc pl-3">
+                    <li>
+                      <span className="font-semibold text-line">Derrota:</span> Se restan los puntos del partido (15 + 2 pts por cada gol de diferencia).
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </aside>

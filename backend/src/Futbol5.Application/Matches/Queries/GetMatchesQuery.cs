@@ -17,11 +17,13 @@ public class GetMatchesQueryHandler(IApplicationDbContext context)
             .Include(m => m.MatchPlayers)
             .ThenInclude(mp => mp.Player)
             .OrderByDescending(m => m.Date)
+            .ThenByDescending(m => m.CreatedAt)
             .ToListAsync(cancellationToken);
 
         return matches.Select(m => new MatchDto(
             m.Id,
             m.Date,
+            m.CreatedAt,
             m.TeamAName,
             m.TeamBName,
             m.ScoreA,

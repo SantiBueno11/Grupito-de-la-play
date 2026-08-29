@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Trophy, Lock, Calendar, Award, TrendingUp } from "lucide-react";
+import { X, Trophy, Lock, Calendar, Award, TrendingUp, CheckCircle2, XCircle } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { RankLogo } from "./RankLogo";
 import { api } from "../lib/api";
@@ -39,34 +39,59 @@ export function PlayerProfileModal({ playerId, players, matches = [], onClose }:
 
   const player = players.find((p) => p.id === playerId);
 
-  // Filtrado ultra seguro y flexible de partidos
+  // Filtrado y cálculo de victorias/derrotas por partido
+  const targetId = String(playerId).trim();
+  const targetName = player?.name?.trim().toLowerCase();
+
+  const checkItem = (item: any) => {
+    if (!item) return false;
+    if (typeof item === "string" || typeof item === "number") {
+      const val = String(item).trim().toLowerCase();
+      return val === targetId.toLowerCase() || (targetName && val.includes(targetName));
+    }
+    if (typeof item === "object") {
+      const possibleIds = [item.id, item.playerId, item._id, item.userId].map(v => v ? String(v).trim() : "");
+      const possibleNames = [item.name, item.playerName, item.username].map(v => v ? String(v).trim().toLowerCase() : "");
+
+      if (possibleIds.includes(targetId)) return true;
+      if (targetName && possibleNames.some(n => n.includes(targetName))) return true;
+    }
+    return false;
+  };
+
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
+
   const playerMatches = matches.filter((m) => {
     if (!m) return false;
-    const targetId = String(playerId).trim();
-    const targetName = player?.name?.trim().toLowerCase();
-
-    const checkItem = (item: any) => {
-      if (!item) return false;
-      if (typeof item === "string" || typeof item === "number") {
-        const val = String(item).trim().toLowerCase();
-        return val === targetId.toLowerCase() || (targetName && val.includes(targetName));
-      }
-      if (typeof item === "object") {
-        const possibleIds = [item.id, item.playerId, item._id, item.userId].map(v => v ? String(v).trim() : "");
-        const possibleNames = [item.name, item.playerName, item.username].map(v => v ? String(v).trim().toLowerCase() : "");
-
-        if (possibleIds.includes(targetId)) return true;
-        if (targetName && possibleNames.some(n => n.includes(targetName))) return true;
-      }
-      return false;
-    };
-
     const inTeamA = Array.isArray(m.teamA) && m.teamA.some(checkItem);
     const inTeamB = Array.isArray(m.teamB) && m.teamB.some(checkItem);
     const inPlayers = Array.isArray((m as any).players) && (m as any).players.some(checkItem);
 
     return inTeamA || inTeamB || inPlayers;
+  }).map((m) => {
+    const inTeamA = Array.isArray(m.teamA) && m.teamA.some(checkItem);
+    const inTeamB = Array.isArray(m.teamB) && m.teamB.some(checkItem);
+
+    let outcome: "win" | "loss" | "draw" = "draw";
+    if (inTeamA) {
+      if (m.scoreA > m.scoreB) outcome = "win";
+      else if (m.scoreA < m.scoreB) outcome = "loss";
+    } else if (inTeamB) {
+      if (m.scoreB > m.scoreA) outcome = "win";
+      else if (m.scoreB < m.scoreA) outcome = "loss";
+    }
+
+    if (outcome === "win") wins++;
+    else if (outcome === "loss") losses++;
+    else draws++;
+
+    return { ...m, playerOutcome: outcome };
   });
+
+  const totalFiltered = playerMatches.length;
+  const winRate = totalFiltered > 0 ? Math.round((wins / totalFiltered) * 100) : 0;
 
   useEffect(() => {
     async function fetchBadges() {
@@ -130,11 +155,63 @@ export function PlayerProfileModal({ playerId, players, matches = [], onClose }:
           </div>
         </div>
 
-        {/* HISTORIAL RECIENTE */}
+        {/* GRÁFICO / ESTADÍSTICAS DE VICTORIAS Y DERROTAS */}
+        <div className="mt-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between text-xs font-bold text-amber-400">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} />
+              <span>Rendimiento (Partidos Jugados: {totalFiltered})</span>
+            </div>
+            {totalFiltered > 0 && (
+              <span className="text-line/70">Efectividad: <strong className="text-amber-300">{winRate}%</strong></span>
+            )}
+          </div>
+
+          {/* Barra gráfica de proporción */}
+          {totalFiltered > 0 && (
+            <div className="flex h-3 w-full overflow-hidden rounded-full bg-line/10 border border-line/15 gap-0.5 p-0.5">
+              <div 
+                className="bg-emerald-500 transition-all rounded-l-full" 
+                style={{ width: `${(wins / totalFiltered) * 100}%` }} 
+                title={`Victorias: ${wins}`}
+              />
+              {draws > 0 && (
+                <div 
+                  className="bg-amber-500 transition-all" 
+                  style={{ width: `${(draws / totalFiltered) * 100}%` }} 
+                  title={`Empates: ${draws}`}
+                />
+              )}
+              <div 
+                className="bg-rose-500 transition-all rounded-r-full" 
+                style={{ width: `${(losses / totalFiltered) * 100}%` }} 
+                title={`Derrotas: ${losses}`}
+              />
+            </div>
+          )}
+
+          {/* Conteo detallado */}
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2 flex flex-col">
+              <span className="text-line/50 text-[10px] uppercase font-bold">Ganados</span>
+              <span className="font-black text-emerald-400 text-sm mt-0.5">{wins}</span>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-2 flex flex-col">
+              <span className="text-line/50 text-[10px] uppercase font-bold">Empates</span>
+              <span className="font-black text-amber-400 text-sm mt-0.5">{draws}</span>
+            </div>
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2 flex flex-col">
+              <span className="text-line/50 text-[10px] uppercase font-bold">Perdidos</span>
+              <span className="font-black text-rose-400 text-sm mt-0.5">{losses}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* HISTORIAL RECIENTE CON ETIQUETAS DE GANADO/PERDIDO */}
         <div className="mt-5 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-            <TrendingUp size={16} />
-            <span>Partidos Recientes del Jugador ({playerMatches.length})</span>
+            <Calendar size={16} />
+            <span>Historial Reciente</span>
           </div>
 
           {playerMatches.length === 0 ? (
@@ -143,22 +220,41 @@ export function PlayerProfileModal({ playerId, players, matches = [], onClose }:
             </p>
           ) : (
             <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-              {playerMatches.slice(0, 5).map((m) => (
-                <div key={m.id} className="flex items-center justify-between p-2.5 rounded-xl border border-line/10 bg-line/5 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-amber-400" />
-                    <span>{new Date(m.date).toLocaleDateString("es-AR", { day: 'numeric', month: 'short' })}</span>
+              {playerMatches.map((m) => {
+                const isWin = m.playerOutcome === "win";
+                const isLoss = m.playerOutcome === "loss";
+
+                return (
+                  <div key={m.id} className="flex items-center justify-between p-2.5 rounded-xl border border-line/10 bg-line/5 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      {isWin ? (
+                        <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                      ) : isLoss ? (
+                        <XCircle size={16} className="text-rose-400 shrink-0" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center font-bold text-[9px]">=</div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="font-bold text-line">
+                          {new Date(m.date).toLocaleDateString("es-AR", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase ${isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-amber-400"}`}>
+                          {isWin ? "Victoria" : isLoss ? "Derrota" : "Empate"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="font-black text-line/80 bg-black/30 px-2.5 py-1 rounded-lg border border-line/10">
+                      A ({m.scoreA}) - ({m.scoreB}) B
+                    </div>
                   </div>
-                  <div className="font-black text-amber-300">
-                    Resultado: A ({m.scoreA}) - ({m.scoreB}) B
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* VITRINA DE LOGROS (DESBLOQUEADAS Y CON CANDADO) */}
+        {/* VITRINA DE LOGROS */}
         <div className="mt-6 flex flex-col gap-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
             <Award size={16} />

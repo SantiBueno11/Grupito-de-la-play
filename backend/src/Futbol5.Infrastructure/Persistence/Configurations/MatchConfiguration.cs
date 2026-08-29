@@ -17,6 +17,8 @@ public class MatchConfiguration : IEntityTypeConfiguration<Match>
                 d => d.ToString("yyyy-MM-dd"),
                 s => DateOnly.Parse(s));
 
+        builder.Property(m => m.CreatedAt).IsRequired();
+
         builder.Property(m => m.TeamAName).IsRequired().HasMaxLength(50);
         builder.Property(m => m.TeamBName).IsRequired().HasMaxLength(50);
 
