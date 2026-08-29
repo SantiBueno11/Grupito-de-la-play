@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Futbol5.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialPostgres : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,8 +15,9 @@ namespace Futbol5.Infrastructure.Migrations
                 name: "Matches",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Date = table.Column<string>(type: "TEXT", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     TeamAName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     TeamBName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     ScoreA = table.Column<int>(type: "INTEGER", nullable: false),
@@ -31,9 +32,12 @@ namespace Futbol5.Infrastructure.Migrations
                 name: "Players",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    PhotoUrl = table.Column<string>(type: "TEXT", nullable: true)
+                    PhotoUrl = table.Column<string>(type: "TEXT", nullable: true),
+                    Rating = table.Column<int>(type: "INTEGER", nullable: true),
+                    Mmr = table.Column<int>(type: "INTEGER", nullable: false),
+                    EsDelGrupo = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
@@ -44,10 +48,11 @@ namespace Futbol5.Infrastructure.Migrations
                 name: "MatchPlayers",
                 columns: table => new
                 {
-                    MatchId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PlayerId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    MatchId = table.Column<string>(type: "TEXT", nullable: false),
+                    PlayerId = table.Column<string>(type: "TEXT", nullable: false),
                     Team = table.Column<int>(type: "INTEGER", nullable: false),
-                    HasSpecialTag = table.Column<bool>(type: "INTEGER", nullable: false)
+                    HasSpecialTag = table.Column<int>(type: "INTEGER", nullable: false),
+                    Asistio = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
