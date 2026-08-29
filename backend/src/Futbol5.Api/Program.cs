@@ -60,5 +60,6 @@ app.MapGet("/", () => "Futbol5 API está corriendo ⚽");
 
 app.MapPlayersEndpoints();
 app.MapMatchesEndpoints();
+app.MapGroupSettingsEndpoints();
 
 app.Run();

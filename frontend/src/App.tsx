@@ -40,7 +40,6 @@ type Tab =
   | "randomizador"
   | "plantel";
 
-// Pestañas para el menú completo (Desktop y menú "Más")
 const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
   { id: "inicio", label: "Inicio", icon: Home },
   { id: "cargar", label: "Cargar partido", icon: PlusCircle },
@@ -59,10 +58,22 @@ export default function App() {
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [attendance, setAttendance] = useState<AttendanceEntry[]>([]);
   const [mmr, setMmr] = useState<MmrEntry[]>([]);
+  
+  // Estados de Configuración del Grupo
+  const [groupSettings, setGroupSettings] = useState({
+    name: "Grupito de la Play",
+    description: "Registro de partidos, plantel y tabla de la semana",
+    photoUrl: "",
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tempName, setTempName] = useState("");
+  const [tempDesc, setTempDesc] = useState("");
+  const [tempPhoto, setTempPhoto] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false); // Estado para el menú "Más" en celular
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -72,18 +83,23 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
-      const [p, m, r, a, mm] = await Promise.all([
+      const [p, m, r, a, mm, sett] = await Promise.all([
         api.players.list(),
         api.matches.list(),
         api.matches.ranking(),
         api.matches.attendance(),
         api.matches.mmr(),
+        api.settings.get(),
       ]);
       setPlayers(p);
       setMatches(m);
       setRanking(r);
       setAttendance(a);
       setMmr(mm);
+      setGroupSettings(sett);
+      setTempName(sett.name);
+      setTempDesc(sett.description);
+      setTempPhoto(sett.photoUrl || "");
     } catch (e) {
       setLoadError(
         e instanceof Error
@@ -98,6 +114,22 @@ export default function App() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const updated = await api.settings.update({
+        name: tempName,
+        description: tempDesc,
+        photoUrl: tempPhoto,
+      });
+      setGroupSettings(updated);
+      setSettingsOpen(false);
+      showToast("Configuración actualizada");
+    } catch (err) {
+      showToast("No se pudo guardar la configuración");
+    }
+  };
 
   const createPlayer = async (name: string) => {
     await api.players.create(name);
@@ -148,28 +180,99 @@ export default function App() {
       {/* Cabecera */}
       <div className="relative px-4 sm:px-6 pt-6 pb-5 border-b border-dashed border-line/20 overflow-hidden">
         <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full border-2 border-line/8" />
-        <div className="flex items-center gap-3.5">
-          <img
-            src={grupitoPhoto}
-            alt="Grupito de la Play"
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 shrink-0"
-            style={{ borderColor: "#D4A017" }}
-          />
-          <div>
-            <div className="font-mono text-[10px] sm:text-[11px] tracking-[2px] sm:tracking-[3px] text-win-soft mb-0.5">
-              FÚTBOL 5 · SEMANAL
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <img
+              src={groupSettings.photoUrl || grupitoPhoto}
+              alt="Grupito de la Play"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 shrink-0"
+              style={{ borderColor: "#D4A017" }}
+            />
+            <div>
+              <div className="font-mono text-[10px] sm:text-[11px] tracking-[2px] sm:tracking-[3px] text-win-soft mb-0.5">
+                FÚTBOL 5 · SEMANAL
+              </div>
+              <h1 className="font-display font-bold text-2xl sm:text-3xl m-0">
+                {groupSettings.name}
+              </h1>
             </div>
-            <h1 className="font-display font-bold text-2xl sm:text-3xl m-0">
-              Grupito de la Play
-            </h1>
           </div>
+
+          <button
+            onClick={() => {
+              setTempName(groupSettings.name);
+              setTempDesc(groupSettings.description);
+              setTempPhoto(groupSettings.photoUrl);
+              setSettingsOpen(true);
+            }}
+            className="p-2 rounded-xl bg-line/5 hover:bg-line/10 text-amber-400 border border-amber-500/20 transition-colors cursor-pointer"
+            title="Editar configuración del grupo"
+          >
+            ⚙️
+          </button>
         </div>
         <p className="mt-2.5 text-line/60 text-xs sm:text-sm">
-          Registro de partidos, plantel y tabla de la semana
+          {groupSettings.description}
         </p>
       </div>
 
-      {/* Navegación superior (SOLO PARA COMPUTADORA / Pantallas grandes) */}
+      {/* Modal de Configuración */}
+      {settingsOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <form
+            onSubmit={handleSaveSettings}
+            className="bg-[#0F2419] border border-amber-500/30 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl animate-fadeIn"
+          >
+            <h2 className="text-base font-bold mb-4 text-amber-400">
+              Configurar Grupo
+            </h2>
+
+            <label className="block text-xs mb-1 text-line/70">Nombre del Grupo</label>
+            <input
+              type="text"
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              className="w-full p-2.5 mb-3 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+              required
+            />
+
+            <label className="block text-xs mb-1 text-line/70">Descripción / Subtítulo</label>
+            <input
+              type="text"
+              value={tempDesc}
+              onChange={(e) => setTempDesc(e.target.value)}
+              className="w-full p-2.5 mb-3 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+            />
+
+            <label className="block text-xs mb-1 text-line/70">URL de la Foto de Perfil</label>
+            <input
+              type="text"
+              value={tempPhoto}
+              onChange={(e) => setTempPhoto(e.target.value)}
+              placeholder="https://ejemplo.com/foto.jpg"
+              className="w-full p-2.5 mb-5 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+            />
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="px-4 py-2 bg-line/10 hover:bg-line/20 rounded-xl text-xs font-semibold cursor-pointer text-line"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Navegación superior (Desktop) */}
       <div className="hidden md:flex gap-1.5 px-5 pt-4 overflow-x-auto">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -229,7 +332,7 @@ export default function App() {
         )}
       </div>
 
-      {/* BARRA INFERIOR FIJA PARA CELULAR (Bottom Navigation App Style) */}
+      {/* Barra inferior fija para celular */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0B1A12] border-t border-line/15 py-2 px-3 flex justify-around items-center z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
         {[
           { id: "inicio", label: "Inicio", icon: Home },
@@ -256,7 +359,6 @@ export default function App() {
           );
         })}
 
-        {/* Botón "Más" para abrir el menú flotante con el resto de secciones */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
@@ -271,7 +373,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* MENÚ FLOTANTE "MÁS" (Drawer para celular) */}
+      {/* Menú flotante "Más" */}
       {menuOpen && (
         <div className="md:hidden fixed bottom-16 left-3 right-3 bg-[#0F2419] border border-amber-500/30 rounded-2xl p-3 shadow-2xl z-50 animate-fadeIn flex flex-col gap-1.5">
           <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-3 py-1 border-b border-line/10 mb-1">
