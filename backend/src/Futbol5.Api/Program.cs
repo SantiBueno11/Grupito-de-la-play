@@ -91,10 +91,12 @@ app.UseExceptionHandler(errorApp =>
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
 
-        // En desarrollo devolvemos el detalle, en producción un mensaje genérico
+        // En desarrollo devolvemos el detalle, en producción un mensaje genérico.
+        // Ambas ramas deben tener la MISMA forma de tipo anónimo (mismas propiedades)
+        // para que el compilador pueda unificarlas en el operador ternario.
         var payload = app.Environment.IsDevelopment()
-            ? new { error = exception?.Message, stackTrace = exception?.StackTrace }
-            : new { error = "Ocurrió un error interno." };
+            ? new { error = exception?.Message ?? "Error desconocido", stackTrace = exception?.StackTrace }
+            : new { error = "Ocurrió un error interno.", stackTrace = (string?)null };
 
         await context.Response.WriteAsJsonAsync(payload);
     });
