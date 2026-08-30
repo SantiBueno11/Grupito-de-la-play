@@ -15,6 +15,8 @@ public class Futbol5DbContext(DbContextOptions<Futbol5DbContext> options)
 
     public DbSet<GroupSettingsEntity> GroupSettings => Set<GroupSettingsEntity>();
 
+    public DbSet<UserEntity> Users => Set<UserEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(

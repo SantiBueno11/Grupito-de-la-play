@@ -10,6 +10,8 @@ import {
   Menu,
   X,
   PlusCircle,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import { api } from "./lib/api";
 import type {
@@ -52,6 +54,18 @@ const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
 ];
 
 export default function App() {
+  // Estados de Autenticación y Flujo
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    () => localStorage.getItem("futbol5_auth") === "true"
+  );
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [needsSetup, setNeedsSetup] = useState<boolean>(false);
+
+  // Estados de Login / Registro local
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const [tab, setTab] = useState<Tab>("inicio");
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -100,6 +114,11 @@ export default function App() {
       setTempName(sett.name);
       setTempDesc(sett.description);
       setTempPhoto(sett.photoUrl || "");
+
+      // Si viene de registrarse, activamos la pantalla de configuración inicial del grupo
+      if (isRegistering) {
+        setNeedsSetup(true);
+      }
     } catch (e) {
       setLoadError(
         e instanceof Error
@@ -109,11 +128,34 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isRegistering]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    if (isAuthenticated) {
+      loadAll();
+    }
+  }, [isAuthenticated, loadAll]);
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    if (loginUser.trim() === "" || loginPass.trim() === "") {
+      setLoginError("Por favor, completa todos los campos.");
+      return;
+    }
+
+    localStorage.setItem("futbol5_auth", "true");
+    setIsAuthenticated(true);
+    setLoading(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("futbol5_auth");
+    setIsAuthenticated(false);
+    setNeedsSetup(false);
+    setIsRegistering(false);
+  };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +167,9 @@ export default function App() {
       });
       setGroupSettings(updated);
       setSettingsOpen(false);
-      showToast("Configuración actualizada");
+      setNeedsSetup(false);
+      setIsRegistering(false);
+      showToast("Configuración guardada con éxito");
     } catch (err) {
       showToast("No se pudo guardar la configuración");
     }
@@ -175,6 +219,82 @@ export default function App() {
     showToast("Partido eliminado");
   };
 
+  // 1. PANTALLA DE LOGIN / REGISTRO
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0B1A12] text-line flex items-center justify-center p-4 font-body">
+        <div className="bg-[#0F2419] border border-amber-500/30 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl">
+          <div className="text-center mb-6">
+            <img
+              src={grupitoPhoto}
+              alt="Grupito de la Play"
+              className="w-20 h-20 rounded-full object-cover border-2 mx-auto mb-3 shadow-md"
+              style={{ borderColor: "#D4A017" }}
+            />
+            <h1 className="font-display font-bold text-2xl text-amber-400">Grupito de la Play</h1>
+            <p className="text-xs text-line/60 mt-1">
+              {isRegistering ? "Creá tu cuenta nueva" : "Iniciá sesión para gestionar tu fútbol"}
+            </p>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {loginError && (
+              <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-xs text-red-300 text-center">
+                {loginError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs mb-1 text-line/70 font-semibold">Usuario</label>
+              <input
+                type="text"
+                value={loginUser}
+                onChange={(e) => setLoginUser(e.target.value)}
+                placeholder="Ingresá tu usuario"
+                className="w-full p-3 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1 text-line/70 font-semibold">Contraseña</label>
+              <input
+                type="password"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
+                placeholder="••••••••"
+                className="w-full p-3 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold rounded-xl text-sm transition-colors cursor-pointer mt-2"
+            >
+              {isRegistering ? "Registrarse y Configurar Grupo 🚀" : "Ingresar 🚀"}
+            </button>
+          </form>
+
+          <div className="mt-5 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setLoginError(null);
+              }}
+              className="text-xs text-amber-400 hover:underline cursor-pointer font-medium"
+            >
+              {isRegistering
+                ? "¿Ya tenés cuenta? Iniciá sesión"
+                : "¿No tenés cuenta? Registrate acá"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-line font-body pb-24 md:pb-10">
       {/* Cabecera */}
@@ -198,34 +318,48 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setTempName(groupSettings.name);
-              setTempDesc(groupSettings.description);
-              setTempPhoto(groupSettings.photoUrl);
-              setSettingsOpen(true);
-            }}
-            className="p-2 rounded-xl bg-line/5 hover:bg-line/10 text-amber-400 border border-amber-500/20 transition-colors cursor-pointer"
-            title="Editar configuración del grupo"
-          >
-            ⚙️
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setTempName(groupSettings.name);
+                setTempDesc(groupSettings.description);
+                setTempPhoto(groupSettings.photoUrl);
+                setSettingsOpen(true);
+              }}
+              className="p-2.5 rounded-xl bg-line/5 hover:bg-line/10 text-amber-400 border border-amber-500/20 transition-colors cursor-pointer flex items-center justify-center"
+              title="Editar configuración del grupo"
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer flex items-center justify-center"
+              title="Cerrar Sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
         <p className="mt-2.5 text-line/60 text-xs sm:text-sm">
           {groupSettings.description}
         </p>
       </div>
 
-      {/* Modal de Configuración */}
-      {settingsOpen && (
+      {/* 2. MODAL DE CONFIGURACIÓN POST-REGISTRO O EDICIÓN */}
+      {(settingsOpen || needsSetup) && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <form
             onSubmit={handleSaveSettings}
             className="bg-[#0F2419] border border-amber-500/30 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl animate-fadeIn"
           >
-            <h2 className="text-base font-bold mb-4 text-amber-400">
-              Configurar Grupo
+            <h2 className="text-base font-bold mb-2 text-amber-400">
+              {needsSetup ? "¡Configura tu Grupo Nuevo! ⚽" : "Configurar Grupo"}
             </h2>
+            {needsSetup && (
+              <p className="text-xs text-line/70 mb-4">
+                Personaliza el nombre, la descripción y la foto de tu grupo para comenzar a organizar los partidos.
+              </p>
+            )}
 
             <label className="block text-xs mb-1 text-line/70">Nombre del Grupo</label>
             <input
@@ -254,18 +388,20 @@ export default function App() {
             />
 
             <div className="flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="px-4 py-2 bg-line/10 hover:bg-line/20 rounded-xl text-xs font-semibold cursor-pointer text-line"
-              >
-                Cancelar
-              </button>
+              {!needsSetup && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(false)}
+                  className="px-4 py-2 bg-line/10 hover:bg-line/20 rounded-xl text-xs font-semibold cursor-pointer text-line"
+                >
+                  Cancelar
+                </button>
+              )}
               <button
                 type="submit"
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-xl text-xs font-bold cursor-pointer transition-colors"
               >
-                Guardar Cambios
+                {needsSetup ? "Guardar y Empezar 🚀" : "Guardar Cambios"}
               </button>
             </div>
           </form>

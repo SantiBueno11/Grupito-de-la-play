@@ -36,8 +36,6 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // --- Migraciones y Recálculo de MMR al arrancar ---
-// IMPORTANTE: si esto falla, antes moría en silencio o tiraba la app entera.
-// Ahora logueamos el error real para verlo en los logs de Render.
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -57,10 +55,8 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Esto es clave: si la migración o el recalculo fallan, queremos VERLO
-        // en los logs de Render en vez de que la app arranque en un estado roto.
         logger.LogCritical(ex, "Error crítico durante el arranque (migración o recálculo de MMR).");
-        throw; // re-lanzamos para que Render marque el deploy como fallido y no quede una app "zombie"
+        throw;
     }
 }
 
@@ -71,13 +67,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// CORS tiene que ir antes que cualquier otro middleware que pueda cortar el pipeline,
-// y antes del manejador de excepciones para que los headers se apliquen también en errores.
 app.UseCors("Frontend");
 
 // --- Manejador de excepciones global ---
-// Sin esto, un error no controlado en un endpoint devuelve un 500 "pelado"
-// que en algunos casos no incluye los headers de CORS, generando el falso error de CORS en el navegador.
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -91,9 +83,6 @@ app.UseExceptionHandler(errorApp =>
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
 
-        // En desarrollo devolvemos el detalle, en producción un mensaje genérico.
-        // Ambas ramas deben tener la MISMA forma de tipo anónimo (mismas propiedades)
-        // para que el compilador pueda unificarlas en el operador ternario.
         var payload = app.Environment.IsDevelopment()
             ? new { error = exception?.Message ?? "Error desconocido", stackTrace = exception?.StackTrace }
             : new { error = "Ocurrió un error interno.", stackTrace = (string?)null };
@@ -107,5 +96,6 @@ app.MapGet("/", () => "Futbol5 API está corriendo ⚽");
 app.MapPlayersEndpoints();
 app.MapMatchesEndpoints();
 app.MapGroupSettingsEndpoints();
+app.MapAuthEndpoints(); // <--- Endpoints de Login y Registro integrados
 
 app.Run();
