@@ -1,3 +1,4 @@
+using Futbol5.Domain.Entities;
 using Futbol5.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public static class GroupSettingsEndpoints
         group.MapGet("/", async (Futbol5DbContext db) =>
         {
             var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync(s => s.Id == 1);
-            
+
             if (settings == null)
             {
                 settings = new GroupSettingsEntity();
@@ -47,11 +48,9 @@ public static class GroupSettingsEndpoints
     }
 }
 
-// Entidad temporal para los ajustes si prefieres tenerla aquí o en tu capa de infraestructura
-public class GroupSettingsEntity
-{
-    public int Id { get; set; } = 1;
-    public string Name { get; set; } = "Grupito de la Play";
-    public string Description { get; set; } = "Registro de partidos, plantel y tabla de la semana";
-    public string PhotoUrl { get; set; } = string.Empty;
-}
+// NOTA: la clase GroupSettingsEntity que estaba definida acá se eliminó.
+// La entidad real vive en Futbol5.Domain.Entities.GroupSettingsEntity
+// (esa es la que está mapeada en el DbContext y tiene su migración aplicada).
+// Tener dos clases con el mismo nombre en namespaces distintos es lo que
+// causaba el error "Cannot create a DbSet... entity type with the same
+// name in a different namespace".
