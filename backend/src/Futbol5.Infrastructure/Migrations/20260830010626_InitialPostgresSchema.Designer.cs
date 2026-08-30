@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Futbol5.Infrastructure.Migrations
 {
     [DbContext(typeof(Futbol5DbContext))]
-    [Migration("20260830005857_AddUsersTable")]
-    partial class AddUsersTable
+    [Migration("20260830010626_InitialPostgresSchema")]
+    partial class InitialPostgresSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
