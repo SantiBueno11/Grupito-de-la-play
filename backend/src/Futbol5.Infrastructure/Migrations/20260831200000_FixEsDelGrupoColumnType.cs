@@ -19,9 +19,11 @@ namespace Futbol5.Infrastructure.Migrations
             if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
                 migrationBuilder.Sql(
-                    @"ALTER TABLE ""Players""
+                    @"ALTER TABLE ""Players"" ALTER COLUMN ""EsDelGrupo"" DROP DEFAULT;
+                      ALTER TABLE ""Players""
                       ALTER COLUMN ""EsDelGrupo"" TYPE boolean
-                      USING (""EsDelGrupo""::integer <> 0);"
+                      USING (""EsDelGrupo""::integer <> 0);
+                      ALTER TABLE ""Players"" ALTER COLUMN ""EsDelGrupo"" SET DEFAULT true;"
                 );
             }
         }
@@ -32,9 +34,11 @@ namespace Futbol5.Infrastructure.Migrations
             if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
                 migrationBuilder.Sql(
-                    @"ALTER TABLE ""Players""
+                    @"ALTER TABLE ""Players"" ALTER COLUMN ""EsDelGrupo"" DROP DEFAULT;
+                      ALTER TABLE ""Players""
                       ALTER COLUMN ""EsDelGrupo"" TYPE integer
-                      USING (CASE WHEN ""EsDelGrupo"" THEN 1 ELSE 0 END);"
+                      USING (CASE WHEN ""EsDelGrupo"" THEN 1 ELSE 0 END);
+                      ALTER TABLE ""Players"" ALTER COLUMN ""EsDelGrupo"" SET DEFAULT 1;"
                 );
             }
         }
