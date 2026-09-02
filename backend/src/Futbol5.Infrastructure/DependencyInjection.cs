@@ -3,6 +3,7 @@ using Futbol5.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Futbol5.Infrastructure;
 
@@ -20,7 +21,14 @@ public static class DependencyInjection
             {
                 var connectionString = configuration.GetConnectionString("Postgres")
                     ?? throw new InvalidOperationException("Falta ConnectionStrings:Postgres en la configuración.");
-                options.UseNpgsql(connectionString);
+                options.UseNpgsql(NormalizePostgresConnectionString(connectionString), npgsqlOptions =>
+                {
+                    npgsqlOptions.UseAdminDatabase("postgres");
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(5),
+                        errorCodesToAdd: null);
+                });
             }
             else
             {
@@ -37,5 +45,27 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<Futbol5DbContext>());
 
         return services;
+    }
+
+    private static string NormalizePostgresConnectionString(string connectionString)
+    {
+        // Supabase muestra una URI (postgresql://usuario:clave@host:puerto/base),
+        // mientras Npgsql usa pares clave=valor. Se aceptan ambos formatos.
+        if (!Uri.TryCreate(connectionString, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "postgres" && uri.Scheme != "postgresql"))
+        {
+            return connectionString;
+        }
+
+        var credentials = uri.UserInfo.Split(':', 2);
+        return new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Database = uri.AbsolutePath.Trim('/'),
+            Username = Uri.UnescapeDataString(credentials[0]),
+            Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : string.Empty,
+            SslMode = SslMode.Require,
+        }.ConnectionString;
     }
 }

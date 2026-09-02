@@ -9,6 +9,11 @@ import type {
   Badge,
 } from "./types";
 
+export interface AuthResponse {
+  message: string;
+  username?: string;
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? "https://grupito-de-la-play.onrender.com";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -18,7 +23,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? `Error ${res.status} llamando a ${path}`);
+    throw new Error(body?.error ?? body?.message ?? `Error ${res.status} llamando a ${path}`);
   }
 
   if (res.status === 204) return undefined as T;
@@ -32,6 +37,18 @@ export interface GroupSettings {
 }
 
 export const api = {
+  auth: {
+    login: (username: string, password: string) =>
+      request<AuthResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }),
+    register: (username: string, password: string) =>
+      request<AuthResponse>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }),
+  },
   players: {
     list: () => request<Player[]>("/api/players"),
     create: (name: string) =>
@@ -63,4 +80,14 @@ export const api = {
     update: (data: GroupSettings) =>
       request<GroupSettings>("/api/settings", { method: "PUT", body: JSON.stringify(data) }),
   },
+  dashboard: {
+    get: () => request<{
+      players: Player[];
+      matches: Match[];
+      ranking: RankingEntry[];
+      attendance: AttendanceEntry[];
+      mmr: MmrEntry[];
+      settings: GroupSettings;
+    }>("/api/dashboard"),
+  }
 };

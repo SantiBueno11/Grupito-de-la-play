@@ -30,7 +30,10 @@ import { Attendance } from "./components/Attendance";
 import { HeadToHead } from "./components/HeadToHead";
 import { Randomizador } from "./components/Randomizador";
 import { Inicio } from "./components/Inicio";
-import grupitoPhoto from "./assets/grupito.png";
+import grupitoPhoto from "./assets/logo.png";
+import { fileToCompressedDataUrl } from "./lib/image";
+
+const AUTH_STORAGE_KEY = "futbol5_auth";
 
 type Tab =
   | "inicio"
@@ -56,7 +59,7 @@ const TABS: { id: Tab; label: string; icon: typeof Swords }[] = [
 export default function App() {
   // Estados de Autenticación y Flujo
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    () => localStorage.getItem("futbol5_auth") === "true"
+    () => localStorage.getItem(AUTH_STORAGE_KEY) === "true"
   );
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [needsSetup, setNeedsSetup] = useState<boolean>(false);
@@ -65,6 +68,7 @@ export default function App() {
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   const [tab, setTab] = useState<Tab>("inicio");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -75,7 +79,7 @@ export default function App() {
   
   // Estados de Configuración del Grupo
   const [groupSettings, setGroupSettings] = useState({
-    name: "Grupito de la Play",
+    name: "Fútbol 5",
     description: "Registro de partidos, plantel y tabla de la semana",
     photoUrl: "",
   });
@@ -97,23 +101,20 @@ export default function App() {
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
-      const [p, m, r, a, mm, sett] = await Promise.all([
-        api.players.list(),
-        api.matches.list(),
-        api.matches.ranking(),
-        api.matches.attendance(),
-        api.matches.mmr(),
-        api.settings.get(),
-      ]);
-      setPlayers(p);
-      setMatches(m);
-      setRanking(r);
-      setAttendance(a);
-      setMmr(mm);
-      setGroupSettings(sett);
-      setTempName(sett.name);
-      setTempDesc(sett.description);
-      setTempPhoto(sett.photoUrl || "");
+      // Cargamos todo en una sola petición HTTP hacia el nuevo endpoint /api/dashboard
+      // Esto evita saturar el pool de Supabase y ahorra 5 viajes por internet a Canadá.
+      const data = await api.dashboard.get();
+      
+      setPlayers(data.players);
+      setMatches(data.matches);
+      setRanking(data.ranking);
+      setAttendance(data.attendance);
+      setMmr(data.mmr);
+      setGroupSettings(data.settings);
+      
+      setTempName(data.settings.name);
+      setTempDesc(data.settings.description);
+      setTempPhoto(data.settings.photoUrl || "");
 
       // Si viene de registrarse, activamos la pantalla de configuración inicial del grupo
       if (isRegistering) {
@@ -136,8 +137,7 @@ export default function App() {
     }
   }, [isAuthenticated, loadAll]);
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAuthSubmit = async () => {
     setLoginError(null);
 
     if (loginUser.trim() === "" || loginPass.trim() === "") {
@@ -145,16 +145,40 @@ export default function App() {
       return;
     }
 
-    localStorage.setItem("futbol5_auth", "true");
-    setIsAuthenticated(true);
-    setLoading(true);
+    const username = loginUser.trim();
+    try {
+      setAuthSubmitting(true);
+      const response = isRegistering
+        ? await api.auth.register(username, loginPass)
+        : await api.auth.login(username, loginPass);
+
+      // El backend actual no usa tokens: se persiste la sesión local y el usuario.
+      localStorage.setItem(AUTH_STORAGE_KEY, "true");
+      localStorage.setItem("futbol5_username", response.username ?? username);
+      setIsAuthenticated(true);
+      setLoading(true);
+    } catch (error) {
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo completar la autenticación. Intentá nuevamente.",
+      );
+    } finally {
+      setAuthSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("futbol5_auth");
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem("futbol5_username");
     setIsAuthenticated(false);
     setNeedsSetup(false);
     setIsRegistering(false);
+    setLoginUser("");
+    setLoginPass("");
+    setLoginError(null);
+    // Garantiza que no quede estado visual de la sesión anterior.
+    window.location.reload();
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -172,6 +196,17 @@ export default function App() {
       showToast("Configuración guardada con éxito");
     } catch (err) {
       showToast("No se pudo guardar la configuración");
+    }
+  };
+
+  const handleGroupPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setTempPhoto(await fileToCompressedDataUrl(file));
+    } catch (error) {
+      showToast("No se pudo procesar la imagen seleccionada");
     }
   };
 
@@ -219,6 +254,7 @@ export default function App() {
     showToast("Partido eliminado");
   };
 
+
   // 1. PANTALLA DE LOGIN / REGISTRO
   if (!isAuthenticated) {
     return (
@@ -227,17 +263,21 @@ export default function App() {
           <div className="text-center mb-6">
             <img
               src={grupitoPhoto}
-              alt="Grupito de la Play"
-              className="w-20 h-20 rounded-full object-cover border-2 mx-auto mb-3 shadow-md"
-              style={{ borderColor: "#D4A017" }}
+              alt="Logo"
+              className="w-24 h-24 rounded-3xl object-cover mx-auto mb-4 shadow-lg"
             />
-            <h1 className="font-display font-bold text-2xl text-amber-400">Grupito de la Play</h1>
             <p className="text-xs text-line/60 mt-1">
               {isRegistering ? "Creá tu cuenta nueva" : "Iniciá sesión para gestionar tu fútbol"}
             </p>
           </div>
 
-          <form onSubmit={handleAuthSubmit} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleAuthSubmit();
+            }}
+            className="space-y-4"
+          >
             {loginError && (
               <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-xs text-red-300 text-center">
                 {loginError}
@@ -269,10 +309,16 @@ export default function App() {
             </div>
 
             <button
-              type="submit"
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold rounded-xl text-sm transition-colors cursor-pointer mt-2"
+              type="button"
+              onClick={() => void handleAuthSubmit()}
+              disabled={authSubmitting}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-gray-950 font-bold rounded-xl text-sm transition-colors cursor-pointer mt-2"
             >
-              {isRegistering ? "Registrarse y Configurar Grupo 🚀" : "Ingresar 🚀"}
+              {authSubmitting
+                ? "Procesando..."
+                : isRegistering
+                  ? "Registrarse y Configurar Grupo 🚀"
+                  : "Ingresar 🚀"}
             </button>
           </form>
 
@@ -299,7 +345,7 @@ export default function App() {
     <div className="min-h-screen text-line font-body pb-24 md:pb-10">
       {/* Cabecera */}
       <div className="relative px-4 sm:px-6 pt-6 pb-5 border-b border-dashed border-line/20 overflow-hidden">
-        <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full border-2 border-line/8" />
+        <div className="pointer-events-none absolute -top-16 -right-16 w-52 h-52 rounded-full border-2 border-line/8" />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <img
@@ -378,14 +424,20 @@ export default function App() {
               className="w-full p-2.5 mb-3 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
             />
 
-            <label className="block text-xs mb-1 text-line/70">URL de la Foto de Perfil</label>
+            <label className="block text-xs mb-1 text-line/70">Foto de Perfil</label>
             <input
-              type="text"
-              value={tempPhoto}
-              onChange={(e) => setTempPhoto(e.target.value)}
-              placeholder="https://ejemplo.com/foto.jpg"
-              className="w-full p-2.5 mb-5 bg-line/5 rounded-xl border border-line/15 text-white text-sm focus:outline-none focus:border-amber-500"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleGroupPhotoChange}
+              className="w-full mb-5 text-xs text-line/70 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-amber-500 file:text-gray-950 file:text-xs file:font-bold file:cursor-pointer hover:file:bg-amber-400"
             />
+            {tempPhoto && (
+              <img
+                src={tempPhoto}
+                alt="Vista previa de la foto del grupo"
+                className="w-16 h-16 object-cover rounded-full border border-amber-500/50 mb-5"
+              />
+            )}
 
             <div className="flex justify-end gap-2.5">
               {!needsSetup && (
@@ -429,7 +481,6 @@ export default function App() {
           );
         })}
       </div>
-
       {/* Contenido Principal */}
       <div className="px-3 sm:px-5 pt-4 sm:pt-5 max-w-[720px] mx-auto w-full">
         {loading ? (

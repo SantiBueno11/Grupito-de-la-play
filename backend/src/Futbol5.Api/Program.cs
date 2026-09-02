@@ -1,15 +1,12 @@
 using Futbol5.Api.Endpoints;
 using Futbol5.Application;
-using Futbol5.Application.Matches.Commands;
 using Futbol5.Infrastructure;
 using Futbol5.Infrastructure.Persistence;
-using MediatR;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Servicios ---
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -18,10 +15,9 @@ builder.Services.AddSwaggerGen();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB, para fotos en base64
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
 });
 
-// --- CONFIGURACIÓN DE CORS ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -29,13 +25,12 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Permite credenciales/cookies si las usas
+              .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// --- Migraciones y Recálculo de MMR al arrancar ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -43,24 +38,17 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // 1. Aplicar migraciones
         var db = services.GetRequiredService<Futbol5DbContext>();
         db.Database.Migrate();
         logger.LogInformation("Migraciones aplicadas correctamente.");
-
-        // 2. Recalcular todo el MMR usando el historial existente al arrancar
-        var mediator = services.GetRequiredService<IMediator>();
-        await mediator.Send(new RecalculateMmrCommand());
-        logger.LogInformation("Recalculo de MMR completado.");
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Error crítico durante el arranque (migración o recálculo de MMR).");
+        logger.LogCritical(ex, "Error crítico durante el arranque (migración).");
         throw;
     }
 }
 
-// --- Middleware ---
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -69,7 +57,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("Frontend");
 
-// --- Manejador de excepciones global ---
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -96,6 +83,7 @@ app.MapGet("/", () => "Futbol5 API está corriendo ⚽");
 app.MapPlayersEndpoints();
 app.MapMatchesEndpoints();
 app.MapGroupSettingsEndpoints();
-app.MapAuthEndpoints(); // <--- Endpoints de Login y Registro integrados
+app.MapAuthEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();

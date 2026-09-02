@@ -13,6 +13,7 @@ public class GetPlayersQueryHandler(IApplicationDbContext context)
     public async Task<List<PlayerDto>> Handle(GetPlayersQuery request, CancellationToken cancellationToken)
     {
         return await context.Players
+            .AsNoTracking()
             .OrderBy(p => p.Name)
             .Select(p => new PlayerDto(p.Id, p.Name, p.PhotoUrl, p.Rating, p.Mmr, p.Rank, p.EsDelGrupo))
             .ToListAsync(cancellationToken);

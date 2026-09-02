@@ -411,27 +411,74 @@ export function Plantel({
 
         {/* Guía de Medallas */}
         <div className="lg:col-span-1">
-          <div className="sticky top-4 rounded-xl border border-line/10 bg-line/3 p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2 border-b border-line/10 pb-2.5">
-              <Trophy size={18} className="text-amber-400" />
-              <h3 className="font-bold text-sm text-line">Guía de Medallas</h3>
+          <div className="sticky top-4 rounded-2xl border border-white/10 bg-gradient-to-b from-[#0d1410] to-[#111a15] p-5 flex flex-col gap-4 shadow-[inset_0_1px_4px_rgba(255,255,255,0.05),0_8px_20px_rgba(0,0,0,0.6)]">
+            
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2.5">
+                <Trophy size={22} color="#f5b942" className="drop-shadow-[0_0_8px_rgba(245,185,66,0.3)]" />
+                <h3 className="font-bold text-[15px] text-[#f5f5f0] tracking-wide">Guía de Medallas</h3>
+              </div>
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-[#f5b942]/30 to-transparent" />
+              <p className="text-[12px] text-[#9aa19a] leading-relaxed">
+                Cada jugador puede desbloquear estos logros automáticamente según su rendimiento en los partidos:
+              </p>
             </div>
-            <p className="text-xs text-line/60 leading-relaxed">
-              Cada jugador puede desbloquear estos logros automáticamente según su rendimiento en los partidos:
-            </p>
-            <div className="flex flex-col gap-2.5 mt-1">
+            
+            <div className="flex flex-col gap-3">
               {BADGE_DEFINITIONS.map((badge) => {
                 const imgSrc = badgeImages[badge.id];
+                
+                const getBadgeStyle = (id: string) => {
+                  switch (id) {
+                    case "el_fiel": return { hex: "#4a9eff", bg: "bg-[#4a9eff]/[0.06]", border: "border-l-[#4a9eff]", title: "text-[#80bfff]", iconDesaturate: "" };
+                    case "racha_fuego": return { hex: "#ff8a3d", bg: "bg-[#ff8a3d]/[0.06]", border: "border-l-[#ff8a3d]", title: "text-[#ffb380]", iconDesaturate: "" };
+                    case "muro": return { hex: "#c4cdd6", bg: "bg-[#c4cdd6]/[0.06]", border: "border-l-[#c4cdd6]", title: "text-[#e2e8f0]", iconDesaturate: "" };
+                    case "veterano": return { hex: "#4ade80", bg: "bg-[#4ade80]/[0.06]", border: "border-l-[#4ade80]", title: "text-[#86efac]", iconDesaturate: "" };
+                    case "aplastante": return { hex: "#fbbf24", bg: "bg-[#fbbf24]/[0.06]", border: "border-l-[#fbbf24]", title: "text-[#fcd34d]", iconDesaturate: "" };
+                    case "invicto_mes": return { hex: "#22d3ee", bg: "bg-[#22d3ee]/[0.06]", border: "border-l-[#22d3ee]", title: "text-[#67e8f9]", iconDesaturate: "" };
+                    case "el_fantasma": return { hex: "#b91c3c", bg: "bg-[#b91c3c]/[0.08]", border: "border-l-[#b91c3c]", title: "text-[#d66b7c]", iconDesaturate: "grayscale opacity-75 contrast-75" };
+                    case "en_lona": return { hex: "#dc2626", bg: "bg-[#dc2626]/[0.08]", border: "border-l-[#dc2626]", title: "text-[#f87171]", iconDesaturate: "saturate-50 opacity-80" };
+                    default: return { hex: "#ffffff", bg: "bg-white/5", border: "border-l-white", title: "text-white", iconDesaturate: "" };
+                  }
+                };
+
+                const style = getBadgeStyle(badge.id);
+
                 return (
-                  <div key={badge.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-line/10 bg-line/5">
+                  <div 
+                    key={badge.id} 
+                    className={`group relative flex items-center gap-5 p-3.5 pr-4 rounded-xl border border-transparent border-l-[3.5px] ${style.border} ${style.bg} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden`}
+                  >
+                    {/* Hover brighten overlay */}
+                    <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.04] transition-colors duration-200 pointer-events-none" />
+                    
+                    {/* Icon halo/glow */}
+                    <div 
+                      className="absolute left-4 w-10 h-10 rounded-full blur-xl transition-opacity duration-200 opacity-50 group-hover:opacity-80" 
+                      style={{ backgroundColor: style.hex }} 
+                    />
+
                     {imgSrc ? (
-                      <img src={imgSrc} alt={badge.title} className="w-7 h-7 object-contain shrink-0" />
+                      <div className="relative shrink-0 flex items-center justify-center">
+                        <img 
+                          src={imgSrc} 
+                          alt={badge.title} 
+                          className={`w-[40px] h-[40px] object-contain relative z-10 transition-transform duration-200 group-hover:scale-105 drop-shadow-md ${style.iconDesaturate}`} 
+                        />
+                      </div>
                     ) : (
-                      <span className="text-xl shrink-0">🏆</span>
+                      <div className="w-[40px] h-[40px] relative z-10 shrink-0 flex items-center justify-center bg-black/40 rounded-full border border-white/10 shadow-inner">
+                        <span className="text-xl drop-shadow-md">🏆</span>
+                      </div>
                     )}
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-amber-300">{badge.title}</span>
-                      <span className="text-[11px] text-line/60 leading-tight">{badge.description}</span>
+                    
+                    <div className="flex flex-col z-10 justify-center">
+                      <span className={`text-[13px] font-bold tracking-wide ${style.title}`}>
+                        {badge.title}
+                      </span>
+                      <span className="text-[11px] text-[#8a8f8a] leading-[1.3] mt-0.5 max-w-[95%] line-clamp-2">
+                        {badge.description}
+                      </span>
                     </div>
                   </div>
                 );
