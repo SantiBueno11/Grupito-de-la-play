@@ -14,7 +14,7 @@ public static class GroupSettingsEndpoints
         // GET: Obtener la configuración del grupo
         group.MapGet("/", async (Futbol5DbContext db) =>
         {
-            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync(s => s.Id == 1);
+            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync();
 
             if (settings == null)
             {
@@ -29,7 +29,7 @@ public static class GroupSettingsEndpoints
         // PUT: Actualizar la configuración del grupo
         group.MapPut("/", async (GroupSettingsEntity inputSettings, Futbol5DbContext db) =>
         {
-            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync(s => s.Id == 1);
+            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync();
 
             if (settings == null)
             {

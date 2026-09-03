@@ -3,6 +3,7 @@ namespace Futbol5.Domain.Entities;
 public class Player
 {
     public Guid Id { get; private set; }
+    public int UserId { get; set; }
     public string Name { get; private set; } = string.Empty;
     public string? PhotoUrl { get; private set; }
     

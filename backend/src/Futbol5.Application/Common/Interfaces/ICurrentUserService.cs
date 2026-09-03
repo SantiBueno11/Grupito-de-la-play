@@ -1,0 +1,7 @@
+namespace Futbol5.Application.Common.Interfaces;
+
+public interface ICurrentUserService
+{
+    int? UserId { get; }
+    string? Username { get; }
+}

@@ -10,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Futbol5.Application.Common.Interfaces.ICurrentUserService, Futbol5.Api.Services.CurrentUserService>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -40,7 +43,29 @@ using (var scope = app.Services.CreateScope())
     {
         var db = services.GetRequiredService<Futbol5DbContext>();
         db.Database.Migrate();
-        logger.LogInformation("Migraciones aplicadas correctamente.");
+
+        // Fix PostgreSQL sequences that might be out of sync due to hardcoded IDs
+        try 
+        {
+            db.Database.ExecuteSqlRaw(@"
+                DO $$
+                DECLARE
+                    max_gs integer;
+                    max_us integer;
+                BEGIN
+                    SELECT coalesce(max(""Id""), 0) INTO max_gs FROM ""GroupSettings"";
+                    PERFORM setval('""GroupSettings_Id_seq""', max_gs + 1, false);
+                    
+                    SELECT coalesce(max(""Id""), 0) INTO max_us FROM ""Users"";
+                    PERFORM setval('""Users_Id_seq""', max_us + 1, false);
+                END $$;
+            ");
+            logger.LogInformation("Migraciones aplicadas correctamente y secuencias sincronizadas.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudieron sincronizar las secuencias. Esto es normal si la base de datos es SQLite.");
+        }
     }
     catch (Exception ex)
     {

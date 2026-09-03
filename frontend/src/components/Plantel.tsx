@@ -18,14 +18,14 @@ import type { Player, Match } from "../lib/types";
 import { PlayerProfileModal } from "./PlayerProfileModal";
 
 // Importación de los logos de medallas oficiales para la Guía lateral
-import aplastanteImg from "../assets/badges/aplastante.png";
-import enLonaImg from "../assets/badges/en_lona.png";
-import fantasmaImg from "../assets/badges/fantasma.png";
-import invictoDelMesImg from "../assets/badges/invicto_del_mes.png";
-import medallaElFielImg from "../assets/badges/medalla_el_fiel.png";
-import muroImg from "../assets/badges/muro.png";
-import rachaFuegoImg from "../assets/badges/racha_fuego.png";
-import veteranoImg from "../assets/badges/veterano.png";
+import aplastanteImg from "../assets/Medallas/Aplastante.png";
+import enLonaImg from "../assets/Medallas/Lona.png";
+import fantasmaImg from "../assets/Medallas/Fantasma.png";
+import invictoDelMesImg from "../assets/Medallas/Invicto.png";
+import medallaElFielImg from "../assets/Medallas/Fiel.png";
+import muroImg from "../assets/Medallas/Muro.png";
+import rachaFuegoImg from "../assets/Medallas/Fuego.png";
+import veteranoImg from "../assets/Medallas/Veterano.png";
 
 const badgeImages: Record<string, string> = {
   el_fiel: medallaElFielImg,
@@ -444,44 +444,24 @@ export function Plantel({
 
                 const style = getBadgeStyle(badge.id);
 
-                return (
-                  <div 
-                    key={badge.id} 
-                    className={`group relative flex items-center gap-5 p-3.5 pr-4 rounded-xl border border-transparent border-l-[3.5px] ${style.border} ${style.bg} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden`}
-                  >
-                    {/* Hover brighten overlay */}
-                    <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.04] transition-colors duration-200 pointer-events-none" />
-                    
-                    {/* Icon halo/glow */}
+                  return (
                     <div 
-                      className="absolute left-4 w-10 h-10 rounded-full blur-xl transition-opacity duration-200 opacity-50 group-hover:opacity-80" 
-                      style={{ backgroundColor: style.hex }} 
-                    />
-
-                    {imgSrc ? (
-                      <div className="relative shrink-0 flex items-center justify-center">
+                      key={badge.id} 
+                      className="group relative w-full rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      {imgSrc ? (
                         <img 
                           src={imgSrc} 
                           alt={badge.title} 
-                          className={`w-[40px] h-[40px] object-contain relative z-10 transition-transform duration-200 group-hover:scale-105 drop-shadow-md ${style.iconDesaturate}`} 
+                          className={`w-full h-auto object-cover transition-transform duration-200 group-hover:scale-[1.02] ${style.iconDesaturate}`} 
                         />
-                      </div>
-                    ) : (
-                      <div className="w-[40px] h-[40px] relative z-10 shrink-0 flex items-center justify-center bg-black/40 rounded-full border border-white/10 shadow-inner">
-                        <span className="text-xl drop-shadow-md">🏆</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex flex-col z-10 justify-center">
-                      <span className={`text-[13px] font-bold tracking-wide ${style.title}`}>
-                        {badge.title}
-                      </span>
-                      <span className="text-[11px] text-[#8a8f8a] leading-[1.3] mt-0.5 max-w-[95%] line-clamp-2">
-                        {badge.description}
-                      </span>
+                      ) : (
+                        <div className="w-full h-20 relative flex items-center justify-center bg-black/40 border border-white/10">
+                          <span className="text-xl drop-shadow-md">🏆 {badge.title}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
+                  );
               })}
             </div>
           </div>

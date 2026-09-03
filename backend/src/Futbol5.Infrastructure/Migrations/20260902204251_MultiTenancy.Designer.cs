@@ -3,6 +3,7 @@ using System;
 using Futbol5.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Futbol5.Infrastructure.Migrations
 {
     [DbContext(typeof(Futbol5DbContext))]
-    partial class Futbol5DbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902204251_MultiTenancy")]
+    partial class MultiTenancy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -141,7 +144,7 @@ namespace Futbol5.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Name")
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Players", (string)null);

@@ -155,6 +155,9 @@ export default function App() {
       // El backend actual no usa tokens: se persiste la sesión local y el usuario.
       localStorage.setItem(AUTH_STORAGE_KEY, "true");
       localStorage.setItem("futbol5_username", response.username ?? username);
+      if (response.userId) {
+        localStorage.setItem("futbol5_userid", response.userId.toString());
+      }
       setIsAuthenticated(true);
       setLoading(true);
     } catch (error) {
@@ -171,6 +174,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem("futbol5_username");
+    localStorage.removeItem("futbol5_userid");
     setIsAuthenticated(false);
     setNeedsSetup(false);
     setIsRegistering(false);
@@ -317,8 +321,8 @@ export default function App() {
               {authSubmitting
                 ? "Procesando..."
                 : isRegistering
-                  ? "Registrarse y Configurar Grupo 🚀"
-                  : "Ingresar 🚀"}
+                  ? "Registrarse y Configurar Grupo "
+                  : "Ingresar "}
             </button>
           </form>
 

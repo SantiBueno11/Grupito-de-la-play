@@ -19,7 +19,7 @@ public static class DashboardEndpoints
             var attendance = await mediator.Send(new GetAttendanceQuery());
             var mmr = await mediator.Send(new GetMmrQuery());
 
-            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync(s => s.Id == 1);
+            var settings = await db.Set<GroupSettingsEntity>().FirstOrDefaultAsync();
             if (settings == null)
             {
                 settings = new GroupSettingsEntity();

@@ -34,7 +34,7 @@ public static class AuthEndpoints
             db.Users.Add(newUser);
             await db.SaveChangesAsync();
 
-            return Results.Ok(new { message = "Usuario registrado correctamente" });
+            return Results.Ok(new { message = "Usuario registrado correctamente", username = newUser.Username, userId = newUser.Id });
         });
 
         // Inicio de sesión
@@ -53,7 +53,7 @@ public static class AuthEndpoints
                 await db.SaveChangesAsync();
             }
 
-            return Results.Ok(new { message = "Login exitoso", username = user.Username });
+            return Results.Ok(new { message = "Login exitoso", username = user.Username, userId = user.Id });
         });
     }
 }

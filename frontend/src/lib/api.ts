@@ -12,12 +12,20 @@ import type {
 export interface AuthResponse {
   message: string;
   username?: string;
+  userId?: number;
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://grupito-de-la-play.onrender.com";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const username = localStorage.getItem("futbol5_username") || "";
+  const userId = localStorage.getItem("futbol5_userid") || "";
+  
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...(username ? { "X-Username": username } : {}),
+      ...(userId ? { "X-User-Id": userId } : {})
+    },
     ...options,
   });
 

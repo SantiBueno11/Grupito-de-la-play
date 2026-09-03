@@ -5,6 +5,7 @@ namespace Futbol5.Domain.Entities;
 public class Match
 {
     public Guid Id { get; private set; }
+    public int UserId { get; set; }
     public DateOnly Date { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public string TeamAName { get; private set; } = "Equipo A";
